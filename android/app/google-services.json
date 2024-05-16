@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "619652789578",
+    "project_id": "go-volunteer-ba404",
+    "storage_bucket": "go-volunteer-ba404.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:619652789578:android:2987e10f92eb345bf93db3",
+        "android_client_info": {
+          "package_name": "com.example.go_volunteer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATslRnrqgJ7gbedo_fM5oZySVrKB0h6BU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
