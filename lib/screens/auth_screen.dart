@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_volunteer/screens/login.dart';
+import 'package:go_volunteer/screens/signup.dart';
 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({super.key});
@@ -24,7 +26,9 @@ class AuthScreen extends StatelessWidget {
             ),
             const SizedBox(height: 150),
             GestureDetector(
-              onTap: () {},
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (builder) => Signup()));
+              },
               child: Container(
                 margin: const EdgeInsets.only(left: 20, right: 20),
                 padding: const EdgeInsets.all(10),
@@ -42,7 +46,9 @@ class AuthScreen extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             GestureDetector(
-              onTap: () {},
+              onTap: () {
+                 Navigator.push(context, MaterialPageRoute(builder: (builder) => Login()));
+              },
               child: const SizedBox(
                 width: double.infinity,
                 child: Center(
