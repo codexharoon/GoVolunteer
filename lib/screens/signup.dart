@@ -41,46 +41,49 @@ class _SignupState extends State<Signup> {
       errorText = '';
     });
 
-    try {
-      if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !_isAgreedTerms) {
-        setState(() {
-          errorText = 'All fields must be filled and agreed to the terms';
-        });
-        return;
-      }
+    // Checking if any field is empty or terms are not agreed
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !_isAgreedTerms) {
+      setState(() {
+        errorText = 'All fields must be filled and agreed to the terms';
+      });
+      return;
+    }
 
-      if (password != confirmPassword) {
-        setState(() {
-          errorText = 'Password and confirm password must be the same';
-        });
-        return;
-      }
+    // Checking if passwords match
+    if (password != confirmPassword) {
+      setState(() {
+        errorText = 'Password and confirm password must be the same';
+      });
+      return;
+    }
 
-      if (!emailRegex.hasMatch(email)) {
-        setState(() {
-          emailValidator = 'Invalid Email';
-        });
-      }
+    // Validating email format
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        emailValidator = 'Invalid Email';
+      });
+      return;
+    }
 
-      if (password.length < 8) {
-        setState(() {
-          passwordLength = 'Password length should be greater than 8';
-        });
-      }
+    // Checking password length
+    if (password.length < 8) {
+      setState(() {
+        passwordLength = 'Password length should be greater than 8 characters';
+      });
+      return;
+    }
 
-      if (emailValidator.isEmpty && passwordLength.isEmpty) {
-        setState(() {
-          emailController.clear();
-          passwordController.clear();
-          confirmPasswordController.clear();
-          errorText = '';
-          passwordStrength = '';
-          _isAgreedTerms = false;
-        });
-        Navigator.push(context, MaterialPageRoute(builder: (builder) => Login()));
-      }
-    } catch (e) {
-      print(e);
+    // If all validations pass
+    if (emailValidator.isEmpty && passwordLength.isEmpty) {
+      setState(() {
+        emailController.clear();
+        passwordController.clear();
+        confirmPasswordController.clear();
+        errorText = '';
+        passwordStrength = '';
+        _isAgreedTerms = false;
+      });
+      Navigator.push(context, MaterialPageRoute(builder: (context) => Login()));
     }
   }
 
