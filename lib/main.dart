@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:go_volunteer/screens/home.dart';
 import 'package:go_volunteer/screens/splash_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
-  runApp(const MaterialApp(
+  runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
+    theme: ThemeData(
+      primarySwatch: Colors.green,
+    ),
+    home: HomeScreen(),
   ));
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
