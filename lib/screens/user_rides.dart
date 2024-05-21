@@ -1,112 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:go_volunteer/screens/profile.dart';
-import 'package:go_volunteer/screens/publish_ride.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class HomeScreen extends StatefulWidget {
+class UserRides extends StatefulWidget {
   dynamic user;
-  HomeScreen({super.key, required this.user});
+  UserRides({super.key, required this.user});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<UserRides> createState() => _UserRidesState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _UserRidesState extends State<UserRides> {
   final CollectionReference rides =
       FirebaseFirestore.instance.collection('rides');
+
   @override
   Widget build(BuildContext context) {
-    int _currentIndex = 0;
-    final PageController _pageController = PageController();
-
     return Scaffold(
-      // appBar: AppBar(
-      //   title: const Text('Go Volunteer'),
-      //   automaticallyImplyLeading: false,
-      // ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (value) {
-          setState(() {
-            _currentIndex = value;
-          });
-        },
-        children: [
-          FutureBuilder<QuerySnapshot>(
-            future: rides.get(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-              final data = snapshot.requireData;
+      body: FutureBuilder<QuerySnapshot>(
+        future: rides.where('user', isEqualTo: widget.user.uid).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          final data = snapshot.requireData;
 
-              return ListView.builder(
-                itemCount: data.size,
-                itemBuilder: (context, index) {
-                  var ride = data.docs[index];
-                  return RideCard(
-                    name: ride['name'],
-                    date: ride['date'],
-                    time: ride['time'],
-                    start: ride['start'],
-                    end: ride['end'],
-                    vehicle: ride['vehicle'],
-                    seats: ride['seats'],
-                    rating: ride['rating'],
-                  );
+          return ListView.builder(
+            itemCount: data.size,
+            itemBuilder: (context, index) {
+              var ride = data.docs[index];
+              return UserRideCard(
+                name: ride['name'],
+                date: ride['date'],
+                time: ride['time'],
+                start: ride['start'],
+                end: ride['end'],
+                vehicle: ride['vehicle'],
+                seats: ride['seats'],
+                rating: ride['rating'],
+                onDelete: () async {
+                  await ride.reference.delete();
+                  setState(() {});
                 },
               );
             },
-          ),
-          ProfilePage(
-            user: widget.user,
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => PublishRidePage(
-                        user: widget.user,
-                      )));
+          );
         },
-        backgroundColor: Colors.red,
-        shape: const CircleBorder(),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _pageController.jumpToPage(index);
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
 }
 
-class RideCard extends StatelessWidget {
+class UserRideCard extends StatelessWidget {
   final String name;
   final String date;
   final String time;
@@ -115,8 +62,9 @@ class RideCard extends StatelessWidget {
   final String vehicle;
   final int seats;
   final double rating;
+  final VoidCallback onDelete;
 
-  RideCard({
+  UserRideCard({
     required this.name,
     required this.date,
     required this.time,
@@ -125,6 +73,7 @@ class RideCard extends StatelessWidget {
     required this.vehicle,
     required this.seats,
     required this.rating,
+    required this.onDelete,
   });
 
   @override
@@ -214,18 +163,17 @@ class RideCard extends StatelessWidget {
             ),
             const SizedBox(height: 15),
             GestureDetector(
-              onTap: () {},
+              onTap: onDelete,
               child: Container(
-                // margin: const EdgeInsets.only(left: 10, right: 10),
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(15),
-                  color: const Color(0xFF04BF68),
+                  color: Colors.red,
                 ),
                 width: double.infinity,
                 child: const Center(
                     child: Text(
-                  'Call Volunteer',
+                  'Delete Ride',
                   style: TextStyle(color: Colors.white, fontSize: 20),
                 )),
               ),

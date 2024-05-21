@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class PublishRidePage extends StatefulWidget {
+  dynamic user;
+  PublishRidePage({super.key, required this.user});
+
   @override
   _PublishRidePageState createState() => _PublishRidePageState();
 }
@@ -53,15 +56,19 @@ class _PublishRidePageState extends State<PublishRidePage> {
   void _submitData() async {
     if (_formKey.currentState?.validate() ?? false) {
       await FirebaseFirestore.instance.collection('rides').add({
-        'pickup_address': _pickupController.text,
-        'destination_address': _destinationController.text,
-        'departure_date': _selectedDate,
-        'departure_time': '${_selectedTime.hour}:${_selectedTime.minute}',
-        'available_seats': int.parse(_seatsController.text),
+        'user': widget.user.uid,
+        'name': 'Muhammad Haroon',
+        'start': _pickupController.text,
+        'end': _destinationController.text,
+        'date': _selectedDate.toString().substring(0, 10),
+        'time': '${_selectedTime.hour}:${_selectedTime.minute}',
+        'seats': int.parse(_seatsController.text),
         'vehicle': _vehicleController.text,
+        'rating': 4.5,
       });
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Ride Published Successfully')));
+      Navigator.pop(context);
     }
   }
 
@@ -212,7 +219,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
                 mySeprator(),
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: _submitData,
                   child: Container(
                     margin: const EdgeInsets.only(left: 20, right: 20),
                     padding: const EdgeInsets.all(10),

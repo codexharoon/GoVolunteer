@@ -3,6 +3,8 @@ import 'package:go_volunteer/screens/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_volunteer/screens/user_info.dart';
+
 class Signup extends StatefulWidget {
   const Signup({super.key});
 
@@ -11,10 +13,10 @@ class Signup extends StatefulWidget {
 }
 
 class _SignupState extends State<Signup> {
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   String email = '';
   String password = '';
@@ -34,83 +36,92 @@ class _SignupState extends State<Signup> {
     multiLine: false,
   );
 
-void onSignUpButtonHandler() async {
-  setState(() {
-    email = emailController.text;
-    password = passwordController.text;
-    confirmPassword = confirmPasswordController.text;
-    emailValidator = '';
-    passwordLength = '';
-    errorText = '';
-  });
-
-  // Checking if any field is empty or terms are not agreed
-  if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !_isAgreedTerms) {
+  void onSignUpButtonHandler() async {
     setState(() {
-      errorText = 'All fields must be filled and agreed to the terms';
+      email = emailController.text;
+      password = passwordController.text;
+      confirmPassword = confirmPasswordController.text;
+      emailValidator = '';
+      passwordLength = '';
+      errorText = '';
     });
-    return;
-  }
 
-  // Checking if passwords match
-  if (password != confirmPassword) {
-    setState(() {
-      errorText = 'Password and confirm password must be the same';
-    });
-    return;
-  }
-
-  // Validating email format
-  if (!emailRegex.hasMatch(email)) {
-    setState(() {
-      emailValidator = 'Invalid Email';
-    });
-    return;
-  }
-
-  // Checking password length
-  if (password.length < 8) {
-    setState(() {
-      passwordLength = 'Password length should be greater than 8 characters';
-    });
-    return;
-  }
-
-  // If all validations pass, try to create a new user
-  try {
-    final newUser = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    if (newUser.user != null) {
+    // Checking if any field is empty or terms are not agreed
+    if (email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty ||
+        !_isAgreedTerms) {
       setState(() {
-        emailController.clear();
-        passwordController.clear();
-        confirmPasswordController.clear();
-        passwordStrength = '';
-        _isAgreedTerms = false;
+        errorText = 'All fields must be filled and agreed to the terms';
       });
-         await FirebaseFirestore.instance
-         .collection('users')
-         .doc(newUser.user?.uid)
-         .set({
-         'email' : email,
-      }).then((_) {
-        print('User data stored in Firestore successfully');
-      }).catchError((error) {
-        print('Error storing user data: $error');
-      });
-       // Show Snackbar
-      showCustomSnackbar(context, 'User profile created successfully!');
-      // Optionally navigate to the Login screen
-      Navigator.push(context, MaterialPageRoute(builder: (context) => Login()));
+      return;
     }
-  } catch (e) {
-    // Handle Firebase errors
-    print(e);
+
+    // Checking if passwords match
+    if (password != confirmPassword) {
+      setState(() {
+        errorText = 'Password and confirm password must be the same';
+      });
+      return;
+    }
+
+    // Validating email format
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        emailValidator = 'Invalid Email';
+      });
+      return;
+    }
+
+    // Checking password length
+    if (password.length < 8) {
+      setState(() {
+        passwordLength = 'Password length should be greater than 8 characters';
+      });
+      return;
+    }
+
+    // If all validations pass, try to create a new user
+    try {
+      final newUser =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (newUser.user != null) {
+        setState(() {
+          emailController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
+          passwordStrength = '';
+          _isAgreedTerms = false;
+        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(newUser.user?.uid)
+            .set({
+          'email': email,
+        }).then((_) {
+          print('User data stored in Firestore successfully');
+        }).catchError((error) {
+          print('Error storing user data: $error');
+        });
+        // Show Snackbar
+        showCustomSnackbar(context, 'User profile created successfully!');
+        // Optionally navigate to the Login screen
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => UserInfoPage(
+                      user: newUser.user,
+                    )));
+      }
+    } catch (e) {
+      // Handle Firebase errors
+      print(e);
+    }
   }
-}
 
   void updatePasswordStrength(String password) {
     if (password.isEmpty) {
@@ -122,9 +133,13 @@ void onSignUpButtonHandler() async {
 
     bool hasNumber = password.contains(RegExp(r'\d'));
     bool hasLetter = password.contains(RegExp(r'[a-zA-Z]'));
-    bool hasSpecialCharacters = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+    bool hasSpecialCharacters =
+        password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
 
-    if (password.length >= 8 && hasNumber && hasLetter && hasSpecialCharacters) {
+    if (password.length >= 8 &&
+        hasNumber &&
+        hasLetter &&
+        hasSpecialCharacters) {
       setState(() {
         passwordStrength = 'Strong';
       });
@@ -138,31 +153,33 @@ void onSignUpButtonHandler() async {
       });
     }
   }
- SnackBar buildSnackBar(String message, {String label = 'OK', Duration duration = const Duration(seconds: 3), VoidCallback? onPressed}) {
-  return SnackBar(
-    content: Text(
-      message,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
+
+  SnackBar buildSnackBar(String message,
+      {String label = 'OK',
+      Duration duration = const Duration(seconds: 3),
+      VoidCallback? onPressed}) {
+    return SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    ),
-    backgroundColor: Colors.yellow,
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(5),
-    ),
-    action: SnackBarAction(
-      label: label,
-      textColor: Colors.white,
-      onPressed: onPressed ?? () {},
-    ),
-    duration: duration,
-  );
-}
-
-
+      backgroundColor: Colors.yellow,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(5),
+      ),
+      action: SnackBarAction(
+        label: label,
+        textColor: Colors.white,
+        onPressed: onPressed ?? () {},
+      ),
+      duration: duration,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,80 +189,80 @@ void onSignUpButtonHandler() async {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
-                  Text(
-                    'Signup',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              Text(
+                'Signup',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 10),
               const Text(
-                  'Email Address',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              
-              
-                
+                'Email Address',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your email address',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                      borderSide: BorderSide(
-                        width: 1.0,
-                        color: Colors.grey,
-                      ),
+                controller: emailController,
+                decoration: InputDecoration(
+                  hintText: 'Enter your email address',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5.0),
+                    borderSide: BorderSide(
+                      width: 1.0,
+                      color: Colors.grey,
                     ),
                   ),
                 ),
-            
-              Text(emailValidator,style: TextStyle(color: Colors.red),),
+              ),
+              Text(
+                emailValidator,
+                style: TextStyle(color: Colors.red),
+              ),
               const Text(
-                  'Password',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                'Password',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               TextField(
-                  onChanged: (value) {
-                    updatePasswordStrength(value);
-                  },
-                  controller: passwordController,
-                  obscureText: !_isPasswordVisible,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your password',
-                    suffixText: passwordStrength.isNotEmpty
-                        ? '($passwordStrength)'
-                        : '',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                      borderSide: BorderSide(
-                        width: 1.0,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
+                onChanged: (value) {
+                  updatePasswordStrength(value);
+                },
+                controller: passwordController,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  hintText: 'Enter your password',
+                  suffixText:
+                      passwordStrength.isNotEmpty ? '($passwordStrength)' : '',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5.0),
+                    borderSide: BorderSide(
+                      width: 1.0,
+                      color: Colors.grey,
                     ),
                   ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
                 ),
-              
-              Padding(padding: EdgeInsets.only(left: 20.0,bottom: 5.0),
-              child: Text(passwordLength,style: TextStyle(color: Colors.red),) ,),
-              
+              ),
+              Padding(
+                padding: EdgeInsets.only(left: 20.0, bottom: 5.0),
+                child: Text(
+                  passwordLength,
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(left: 10.0),
                 child: Text(
@@ -400,4 +417,3 @@ void onSignUpButtonHandler() async {
     );
   }
 }
-

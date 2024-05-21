@@ -7,20 +7,18 @@ import 'package:go_volunteer/screens/user_rides.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-class ProfilePage extends StatefulWidget {
+class UserInfoPage extends StatefulWidget {
   dynamic user;
-  ProfilePage({super.key, required this.user});
+  UserInfoPage({super.key, required this.user});
 
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  _UserInfoPageState createState() => _UserInfoPageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
-  final _auth = FirebaseAuth.instance;
+class _UserInfoPageState extends State<UserInfoPage> {
   final _firestore = FirebaseFirestore.instance;
   final _storage = FirebaseStorage.instance;
 
-  User? user;
   String? imageUrl;
   TextEditingController _nameController = TextEditingController();
   TextEditingController _phoneController = TextEditingController();
@@ -49,7 +47,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     GestureDetector(
                       onTap: () {},
                       child: CircleAvatar(
-                        radius: 50,
+                        radius: 70,
                         backgroundColor: Colors.grey,
                         // backgroundImage: _imageFile != null
                         //     ? FileImage(_imageFile!)
@@ -97,60 +95,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         width: double.infinity,
                         child: const Center(
                             child: Text(
-                          'Update Profile',
+                          'Save Details',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         )),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (builder) => UserRides(
-                                      user: widget.user,
-                                    )));
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 10, right: 10),
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          color: const Color(0xFFD97365),
-                        ),
-                        width: double.infinity,
-                        child: const Center(
-                            child: Text(
-                          'My Rides',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        )),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    GestureDetector(
-                      onTap: () async {
-                        await _auth.signOut();
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (builder) => const Login()));
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 10, right: 10),
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          color: Colors.red,
-                        ),
-                        width: double.infinity,
-                        child: const Center(
-                            child: Text(
-                          'Sign out',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        )),
-                      ),
-                    ),
                   ],
                 ),
               ),
