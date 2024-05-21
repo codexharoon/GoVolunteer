@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_volunteer/screens/home.dart';
 import 'package:go_volunteer/screens/signup.dart';
 
 class Login extends StatefulWidget {
@@ -19,26 +20,23 @@ class _LoginState extends State<Login> {
   bool _isPasswordVisible = false;
   bool _isAgreedTerms = false;
 
-
   void onSignUpButtonHandler() {
     setState(() {
       email = emailController.text;
       password = passwordController.text;
-     
     });
     try {
-      if(email.isEmpty || password.isEmpty || !_isAgreedTerms){
+      if (email.isEmpty || password.isEmpty || !_isAgreedTerms) {
         errorText = 'All fields must be filled and agreed to the terms';
-      }else {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (builder) => HomeScreen()));
+      } else {
         print('Successfully logged in');
-      }     
+      }
     } catch (e) {
       print(e);
     }
-
   }
-  
-
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +85,6 @@ class _LoginState extends State<Login> {
                   ),
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.only(left: 10.0),
                 child: Text(
@@ -126,21 +123,19 @@ class _LoginState extends State<Login> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(right:20.0,top: 5.0),
+                padding: const EdgeInsets.only(right: 20.0, top: 5.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text('Forget Password ?')
-                  ],
+                  children: [Text('Forget Password ?')],
                 ),
               ),
-               Padding(
+              Padding(
                 padding: const EdgeInsets.only(top: 10.0, left: 30.0),
                 child: Text(
                   errorText,
                   style: TextStyle(color: Colors.red),
                 ),
-              ),       
+              ),
               Row(
                 children: [
                   Checkbox(

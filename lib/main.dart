@@ -4,11 +4,15 @@ import 'package:go_volunteer/screens/splash_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
-  runApp(const MaterialApp(
+  runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
+    theme: ThemeData(
+      primarySwatch: Colors.green,
+    ),
+    home: const SplashScreen(),
   ));
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 }
