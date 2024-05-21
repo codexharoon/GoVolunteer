@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_volunteer/screens/profile.dart';
+import 'package:go_volunteer/screens/publish_ride.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -58,7 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Car Pooling'),
+        title: const Text('Go Volunteer'),
+        automaticallyImplyLeading: false,
       ),
       body: PageView(
         controller: _pageController,
@@ -89,7 +91,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => PublishRidePage()));
+        },
         backgroundColor: Colors.red,
         shape: const CircleBorder(),
         child: const Icon(
