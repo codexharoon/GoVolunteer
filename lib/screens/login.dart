@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_volunteer/screens/home.dart';
+import 'package:go_volunteer/components/custom_snack_bar.dart';
 import 'package:go_volunteer/screens/signup.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -20,24 +21,34 @@ class _LoginState extends State<Login> {
   bool _isPasswordVisible = false;
   bool _isAgreedTerms = false;
 
-  void onSignUpButtonHandler() {
+void onSignUpButtonHandler() async {
+  setState(() {
+    email = emailController.text;
+    password = passwordController.text;
+    errorText = '';  // Clear any previous error messages
+  });
+
+  // Check if fields are empty or terms are not agreed
+  if (email.isEmpty || password.isEmpty || !_isAgreedTerms) {
     setState(() {
-      email = emailController.text;
-      password = passwordController.text;
+      errorText = 'All fields must be filled and agreed to the terms';
     });
-    try {
-      if (email.isEmpty || password.isEmpty || !_isAgreedTerms) {
-        errorText = 'All fields must be filled and agreed to the terms';
-        Navigator.push(
-            context, MaterialPageRoute(builder: (builder) => HomeScreen()));
-      } else {
-        print('Successfully logged in');
-      }
-    } catch (e) {
-      print(e);
-    }
+    return;
   }
 
+  try {
+    final loggedinUser = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+    if (loggedinUser.user != null) {
+      showCustomSnackbar(context, 'You are logged in!');
+      Navigator.push(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+    }
+  } catch (e) {
+    setState(() {
+      errorText = e.toString();  // Display the error message
+    });
+    showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
