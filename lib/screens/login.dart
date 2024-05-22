@@ -5,6 +5,7 @@ import 'package:go_volunteer/screens/signup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -34,21 +35,27 @@ void onSignInButtonHandler() async {
   if (email.isEmpty || password.isEmpty ) {
     setState(() {
       errorText = 'All fields must be filled';
-    });
-    return;
-  }
-
-  try {
-    final loggedinUser = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-    if (loggedinUser.user != null) {
-      showCustomSnackbar(context, 'You are logged in!');
-      Navigator.push(context, MaterialPageRoute(builder: (context) => HomeScreen()));
     }
-  } catch (e) {
-    setState(() {
-      errorText = e.toString();  // Display the error message
-    });
-    showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+             }
+
+    try {
+      final loggedinUser = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+      if (loggedinUser.user != null) {
+        showCustomSnackbar(context, 'You are logged in!');
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                      user: loggedinUser.user,
+                    )));
+      }
+    } catch (e) {
+      setState(() {
+        errorText = e.toString(); // Display the error message
+      });
+      showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+    }
   }
 }
 Future<void> onGoogleSignInHandler() async {

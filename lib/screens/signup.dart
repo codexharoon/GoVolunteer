@@ -5,6 +5,7 @@ import 'package:go_volunteer/components/custom_snack_bar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:math';
+import 'package:go_volunteer/screens/user_info.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -78,7 +79,6 @@ class _SignupState extends State<Signup> {
       });
       return;
     }
-
     try {
       // Check if the email already exists in Firestore
       final userRef = FirebaseFirestore.instance.collection('users');
@@ -92,6 +92,9 @@ class _SignupState extends State<Signup> {
       }
 
       // Create a new user with Firebase Authentication
+    // If all validations pass, try to create a new user
+    try {
+
       final newUser =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -123,11 +126,21 @@ class _SignupState extends State<Signup> {
           passwordStrength = '';
           _isAgreedTerms = false;
         });
-
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(newUser.user?.uid)
+            .set({
+          'email': email,
+        }).then((_) {
+          print('User data stored in Firestore successfully');
+        }).catchError((error) {
+          print('Error storing user data: $error');
+        });
         // Show Snackbar
         showCustomSnackbar(context, 'User profile created successfully!');
         // Optionally navigate to the Login screen
         Navigator.push(
+ authentication_firebase
             context, MaterialPageRoute(builder: (context) => Login()));
       }
     } catch (e) {
@@ -154,6 +167,14 @@ class _SignupState extends State<Signup> {
       } else {
         showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
       }
+            context,
+            MaterialPageRoute(
+                builder: (context) => UserInfoPage(
+                      user: newUser.user,
+                    )));
+      }
+    } catch (e) {
+      print(e);
     }
   }
 
@@ -271,6 +292,7 @@ class _SignupState extends State<Signup> {
       }
       showCustomSnackbar(context, errorMessage);
     }
+
   }
 
   @override
@@ -395,7 +417,6 @@ class _SignupState extends State<Signup> {
                     'Confirm Password',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 10.0, right: 10.0),
                   child: TextFormField(
