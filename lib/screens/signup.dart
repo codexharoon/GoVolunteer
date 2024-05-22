@@ -3,6 +3,8 @@ import 'package:go_volunteer/screens/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'dart:math';
 import 'package:go_volunteer/screens/user_info.dart';
 
 class Signup extends StatefulWidget {
@@ -31,7 +33,7 @@ class _SignupState extends State<Signup> {
   String passwordLength = '';
 
   final RegExp emailRegex = RegExp(
-    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     caseSensitive: false,
     multiLine: false,
   );
@@ -47,12 +49,9 @@ class _SignupState extends State<Signup> {
     });
 
     // Checking if any field is empty or terms are not agreed
-    if (email.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty ||
-        !_isAgreedTerms) {
+    if (!_isAgreedTerms) {
       setState(() {
-        errorText = 'All fields must be filled and agreed to the terms';
+        errorText = 'You must agreed to the terms';
       });
       return;
     }
@@ -80,9 +79,22 @@ class _SignupState extends State<Signup> {
       });
       return;
     }
+    try {
+      // Check if the email already exists in Firestore
+      final userRef = FirebaseFirestore.instance.collection('users');
+      final querySnapshot =
+          await userRef.where('email', isEqualTo: email).get();
 
+      if (querySnapshot.docs.isNotEmpty) {
+        showCustomSnackbar(context,
+            'The email is already registered. Please use a different email.');
+        return;
+      }
+
+      // Create a new user with Firebase Authentication
     // If all validations pass, try to create a new user
     try {
+
       final newUser =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -90,6 +102,23 @@ class _SignupState extends State<Signup> {
       );
 
       if (newUser.user != null) {
+        // Generate a random number for the guest name
+        final random = Random();
+        final randomNumber =
+            random.nextInt(1000); // Generates a number between 0 and 999
+        // Store user information in Firestore with defaults
+        await userRef.doc(newUser.user!.uid).set({
+          'email': email,
+          'name': 'Guest.$randomNumber',
+          'phone': '123-456-7890',
+          'imageUrl': 'https://example.com/dummy-image.jpg',
+        }).then((_) {
+          print('User data stored in Firestore successfully');
+        }).catchError((error) {
+          print('Error storing user data: $error');
+          showCustomSnackbar(context, 'Error storing user data: $error');
+        });
+
         setState(() {
           emailController.clear();
           passwordController.clear();
@@ -111,6 +140,33 @@ class _SignupState extends State<Signup> {
         showCustomSnackbar(context, 'User profile created successfully!');
         // Optionally navigate to the Login screen
         Navigator.push(
+ authentication_firebase
+            context, MaterialPageRoute(builder: (context) => Login()));
+      }
+    } catch (e) {
+      // Handle Firebase errors
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'email-already-in-use':
+            showCustomSnackbar(context,
+                'The email address is already in use by another account.');
+            break;
+          case 'invalid-email':
+            showCustomSnackbar(context, 'The email address is not valid.');
+            break;
+          case 'operation-not-allowed':
+            showCustomSnackbar(
+                context, 'Email/password accounts are not enabled.');
+            break;
+          case 'weak-password':
+            showCustomSnackbar(context, 'The password is too weak.');
+            break;
+          default:
+            showCustomSnackbar(context, 'An error occurred: ${e.message}');
+        }
+      } else {
+        showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+      }
             context,
             MaterialPageRoute(
                 builder: (context) => UserInfoPage(
@@ -118,7 +174,6 @@ class _SignupState extends State<Signup> {
                     )));
       }
     } catch (e) {
-      // Handle Firebase errors
       print(e);
     }
   }
@@ -154,233 +209,345 @@ class _SignupState extends State<Signup> {
     }
   }
 
-  SnackBar buildSnackBar(String message,
-      {String label = 'OK',
-      Duration duration = const Duration(seconds: 3),
-      VoidCallback? onPressed}) {
-    return SnackBar(
-      content: Text(
-        message,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: Colors.yellow,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(5),
-      ),
-      action: SnackBarAction(
-        label: label,
-        textColor: Colors.white,
-        onPressed: onPressed ?? () {},
-      ),
-      duration: duration,
-    );
+  Future<void> onGoogleSignInHandler() async {
+    try {
+      FirebaseAuth auth = FirebaseAuth.instance;
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // Triggering the authentication flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User canceled the sign-in
+        showCustomSnackbar(context, 'Google sign-in was canceled.');
+        return;
+      }
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in the user with the credential
+      final UserCredential userCredential =
+          await auth.signInWithCredential(credential);
+
+      // Access the user information
+      final User? user = userCredential.user;
+      if (user != null) {
+        // Check if user already exists in Firestore
+        final userRef =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final userData = await userRef.get();
+
+        if (!userData.exists) {
+          // If user does not exist, store user information in Firestore
+          await userRef.set({
+            'name': user.displayName,
+            'email': user.email,
+            'phone': '123-456-7890',
+            'imageUrl': user.photoURL,
+          });
+          showCustomSnackbar(context, 'User profile created successfully!');
+        } else {
+          showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+        }
+      } else {
+        showCustomSnackbar(
+            context, 'Google sign-in failed. No user information available.');
+      }
+    } catch (e) {
+      String errorMessage;
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'account-exists-with-different-credential':
+            errorMessage =
+                'The account already exists with a different credential.';
+            break;
+          case 'invalid-credential':
+            errorMessage = 'The credential is invalid or expired.';
+            break;
+          case 'operation-not-allowed':
+            errorMessage =
+                'Operation not allowed. Please enable Google sign-in in the Firebase console.';
+            break;
+          case 'user-disabled':
+            errorMessage = 'This user has been disabled.';
+            break;
+          case 'user-not-found':
+            errorMessage = 'No user found for this email.';
+            break;
+          case 'wrong-password':
+            errorMessage = 'Wrong password provided.';
+            break;
+          default:
+            errorMessage = 'An undefined error occurred.';
+        }
+      } else {
+        errorMessage = 'An unknown error occurred.';
+      }
+      showCustomSnackbar(context, errorMessage);
+    }
+
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Signup',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Email Address',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your email address',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(5.0),
-                    borderSide: BorderSide(
-                      width: 1.0,
-                      color: Colors.grey,
+      body: Center(
+        child: SingleChildScrollView(
+          child: Form(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: const Text(
+                    'Create your new account',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
-              Text(
-                emailValidator,
-                style: TextStyle(color: Colors.red),
-              ),
-              const Text(
-                'Password',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              TextField(
-                onChanged: (value) {
-                  updatePasswordStrength(value);
-                },
-                controller: passwordController,
-                obscureText: !_isPasswordVisible,
-                decoration: InputDecoration(
-                  hintText: 'Enter your password',
-                  suffixText:
-                      passwordStrength.isNotEmpty ? '($passwordStrength)' : '',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(5.0),
-                    borderSide: BorderSide(
-                      width: 1.0,
-                      color: Colors.grey,
-                    ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: const Text(
+                    'Email Address',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
+                ),
+                Padding(
+                    padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                    child: TextFormField(
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your email address',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(5.0),
+                          borderSide: BorderSide(
+                            width: 1.0,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) {
+                          return 'Email field cannot be empty';
+                        }
+                        return null;
+                      },
+                    )),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0, left: 10.0),
+                  child: Text(
+                    emailValidator,
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: const Text(
+                    'Password',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: TextFormField(
+                    onChanged: (value) {
+                      updatePasswordStrength(value);
+                    },
+                    controller: passwordController,
+                    obscureText: !_isPasswordVisible,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your password',
+                      suffixText: passwordStrength.isNotEmpty
+                          ? '($passwordStrength)'
+                          : '',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5.0),
+                        borderSide: BorderSide(
+                          width: 1.0,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                      ),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Password field cannot be empty';
+                      }
+                      return null;
                     },
                   ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(left: 20.0, bottom: 5.0),
-                child: Text(
-                  passwordLength,
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 10.0),
-                child: Text(
-                  'Confirm Password',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: TextField(
-                  controller: confirmPasswordController,
-                  obscureText: !_isConfirmPasswordVisible,
-                  decoration: InputDecoration(
-                    hintText: 'Enter your password again',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(5.0),
-                      borderSide: BorderSide(
-                        width: 1.0,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isConfirmPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isConfirmPasswordVisible =
-                              !_isConfirmPasswordVisible;
-                        });
-                      },
-                    ),
+                Padding(
+                  padding: EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: Text(
+                    passwordLength,
+                    style: TextStyle(color: Colors.red),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 10.0, left: 30.0),
-                child: Text(
-                  errorText,
-                  style: TextStyle(color: Colors.red),
+                SizedBox(
+                  height: 10.0,
                 ),
-              ),
-              Row(
-                children: [
-                  Checkbox(
-                    fillColor: MaterialStateProperty.all(Color(0xFF04BF68)),
-                    value: _isAgreedTerms,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        _isAgreedTerms = value!;
-                      });
+                const Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: Text(
+                    'Confirm Password',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: TextFormField(
+                    controller: confirmPasswordController,
+                    obscureText: !_isConfirmPasswordVisible,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your password again',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(5.0),
+                        borderSide: BorderSide(
+                          width: 1.0,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isConfirmPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isConfirmPasswordVisible =
+                                !_isConfirmPasswordVisible;
+                          });
+                        },
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) {
+                        return 'Confirm password field cannot be empty';
+                      }
+                      return null;
                     },
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isAgreedTerms = !_isAgreedTerms;
-                        });
-                      },
-                      child: Text(
-                        "I've read and agreed with User Agreement and Privacy Policy",
-                      ),
-                    ),
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                  child: Text(
+                    errorText,
+                    style: TextStyle(color: Colors.red),
                   ),
-                ],
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.only(left: 30.0, top: 5.0, bottom: 5.0),
-                child: Row(
+                ),
+                SizedBox(
+                  height: 10.0,
+                ),
+                Row(
                   children: [
-                    Text(
-                      'Already have an account ? ',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (builder) => Login()));
+                    Checkbox(
+                      fillColor: MaterialStateProperty.all(Color(0xFF04BF68)),
+                      value: _isAgreedTerms,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isAgreedTerms = value!;
+                        });
                       },
-                      child: Text(
-                        'Login',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isAgreedTerms = !_isAgreedTerms;
+                          });
+                        },
+                        child: Text(
+                          "I've read and agreed with User Agreement and Privacy Policy",
+                        ),
                       ),
-                    )
+                    ),
                   ],
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(top: 20.0, bottom: 20.0),
-                child: SizedBox(
+                const SizedBox(
+                  height: 10.0,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0, left: 10.0),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Already have an account ? ',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (builder) => Login()));
+                        },
+                        child: const Text(
+                          'Login',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10.0),
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0, left: 10.0),
+                  child: SizedBox(
                     width: double.infinity,
                     child: TextButton(
                       onPressed: onSignUpButtonHandler,
                       style: TextButton.styleFrom(
                         backgroundColor: Color(0xFF04BF68),
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.all(20.0),
+                        padding: EdgeInsets.all(15.0),
                       ),
                       child: Text('Signup'),
-                    )),
-              ),
-              Center(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: 10.0),
-                      child: Text('Other ways to signup'),
                     ),
-                    SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
+                  ),
+                ),
+                const SizedBox(
+                  height: 10.0,
+                ),
+                Center(
+                    child: Column(children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 10.0),
+                    child: Text('Other ways to signup'),
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: onGoogleSignInHandler,
+                        child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -392,25 +559,25 @@ class _SignupState extends State<Signup> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 10),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: CircleAvatar(
-                            backgroundColor: Color(0xFFFFFFFF),
-                            radius: 25,
-                            child: Image.asset(
-                              'assets/images/facebook-icon.png',
-                            ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: CircleAvatar(
+                          backgroundColor: Color(0xFFFFFFFF),
+                          radius: 25,
+                          child: Image.asset(
+                            'assets/images/facebook-icon.png',
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      ),
+                    ],
+                  ),
+                ]))
+              ],
+            ),
           ),
         ),
       ),
