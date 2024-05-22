@@ -36,7 +36,9 @@ void onSignInButtonHandler() async {
     setState(() {
       errorText = 'All fields must be filled';
     }
-             }
+    );
+    }
+    
 
     try {
       final loggedinUser = await FirebaseAuth.instance
@@ -57,7 +59,7 @@ void onSignInButtonHandler() async {
       showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
     }
   }
-}
+
 Future<void> onGoogleSignInHandler() async {
   try {
     FirebaseAuth auth = FirebaseAuth.instance;

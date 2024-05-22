@@ -140,7 +140,6 @@ class _SignupState extends State<Signup> {
         showCustomSnackbar(context, 'User profile created successfully!');
         // Optionally navigate to the Login screen
         Navigator.push(
- authentication_firebase
             context, MaterialPageRoute(builder: (context) => Login()));
       }
     } catch (e) {
@@ -167,7 +166,6 @@ class _SignupState extends State<Signup> {
       } else {
         showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
       }
-            context,
             MaterialPageRoute(
                 builder: (context) => UserInfoPage(
                       user: newUser.user,
