@@ -92,86 +92,83 @@ class _SignupState extends State<Signup> {
       }
 
       // Create a new user with Firebase Authentication
-    // If all validations pass, try to create a new user
-    try {
+      // If all validations pass, try to create a new user
+      try {
+        final newUser =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
 
-      final newUser =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+        if (newUser.user != null) {
+          // Generate a random number for the guest name
+          final random = Random();
+          final randomNumber =
+              random.nextInt(1000); // Generates a number between 0 and 999
+          // Store user information in Firestore with defaults
+          await userRef.doc(newUser.user!.uid).set({
+            'email': email,
+            'name': 'Guest.$randomNumber',
+            'phone': '123-456-7890',
+            'imageUrl': 'https://example.com/dummy-image.jpg',
+          }).then((_) {
+            print('User data stored in Firestore successfully');
+          }).catchError((error) {
+            print('Error storing user data: $error');
+            showCustomSnackbar(context, 'Error storing user data: $error');
+          });
 
-      if (newUser.user != null) {
-        // Generate a random number for the guest name
-        final random = Random();
-        final randomNumber =
-            random.nextInt(1000); // Generates a number between 0 and 999
-        // Store user information in Firestore with defaults
-        await userRef.doc(newUser.user!.uid).set({
-          'email': email,
-          'name': 'Guest.$randomNumber',
-          'phone': '123-456-7890',
-          'imageUrl': 'https://example.com/dummy-image.jpg',
-        }).then((_) {
-          print('User data stored in Firestore successfully');
-        }).catchError((error) {
-          print('Error storing user data: $error');
-          showCustomSnackbar(context, 'Error storing user data: $error');
-        });
-
-        setState(() {
-          emailController.clear();
-          passwordController.clear();
-          confirmPasswordController.clear();
-          passwordStrength = '';
-          _isAgreedTerms = false;
-        });
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(newUser.user?.uid)
-            .set({
-          'email': email,
-        }).then((_) {
-          print('User data stored in Firestore successfully');
-        }).catchError((error) {
-          print('Error storing user data: $error');
-        });
-        // Show Snackbar
-        showCustomSnackbar(context, 'User profile created successfully!');
-        // Optionally navigate to the Login screen
-        Navigator.push(
- authentication_firebase
-            context, MaterialPageRoute(builder: (context) => Login()));
-      }
-    } catch (e) {
-      // Handle Firebase errors
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'email-already-in-use':
-            showCustomSnackbar(context,
-                'The email address is already in use by another account.');
-            break;
-          case 'invalid-email':
-            showCustomSnackbar(context, 'The email address is not valid.');
-            break;
-          case 'operation-not-allowed':
-            showCustomSnackbar(
-                context, 'Email/password accounts are not enabled.');
-            break;
-          case 'weak-password':
-            showCustomSnackbar(context, 'The password is too weak.');
-            break;
-          default:
-            showCustomSnackbar(context, 'An error occurred: ${e.message}');
+          setState(() {
+            emailController.clear();
+            passwordController.clear();
+            confirmPasswordController.clear();
+            passwordStrength = '';
+            _isAgreedTerms = false;
+          });
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(newUser.user?.uid)
+              .set({
+            'email': email,
+          }).then((_) {
+            print('User data stored in Firestore successfully');
+          }).catchError((error) {
+            print('Error storing user data: $error');
+          });
+          // Show Snackbar
+          showCustomSnackbar(context, 'User profile created successfully!');
+          // Optionally navigate to the Login screen
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => UserInfoPage(
+                        user: newUser.user,
+                      )));
         }
-      } else {
-        showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
-      }
-            context,
-            MaterialPageRoute(
-                builder: (context) => UserInfoPage(
-                      user: newUser.user,
-                    )));
+      } catch (e) {
+        // Handle Firebase errors
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'email-already-in-use':
+              showCustomSnackbar(context,
+                  'The email address is already in use by another account.');
+              break;
+            case 'invalid-email':
+              showCustomSnackbar(context, 'The email address is not valid.');
+              break;
+            case 'operation-not-allowed':
+              showCustomSnackbar(
+                  context, 'Email/password accounts are not enabled.');
+              break;
+            case 'weak-password':
+              showCustomSnackbar(context, 'The password is too weak.');
+              break;
+            default:
+              showCustomSnackbar(context, 'An error occurred: ${e.message}');
+          }
+        } else {
+          showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+        }
       }
     } catch (e) {
       print(e);
@@ -292,12 +289,15 @@ class _SignupState extends State<Signup> {
       }
       showCustomSnackbar(context, errorMessage);
     }
-
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white.withOpacity(0),
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Form(
@@ -305,12 +305,13 @@ class _SignupState extends State<Signup> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: const Text(
+                const Center(
+                  child: Text(
                     'Create your new account',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
+                      color: Color(0xFF004643),
                     ),
                   ),
                 ),
@@ -327,11 +328,12 @@ class _SignupState extends State<Signup> {
                     child: TextFormField(
                       controller: emailController,
                       decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.email),
                         hintText: 'Enter your email address',
-                        hintStyle: TextStyle(color: Colors.grey),
+                        hintStyle: const TextStyle(color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(5.0),
-                          borderSide: BorderSide(
+                          borderSide: const BorderSide(
                             width: 1.0,
                             color: Colors.grey,
                           ),
@@ -368,6 +370,7 @@ class _SignupState extends State<Signup> {
                     controller: passwordController,
                     obscureText: !_isPasswordVisible,
                     decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.lock),
                       hintText: 'Enter your password',
                       suffixText: passwordStrength.isNotEmpty
                           ? '($passwordStrength)'
@@ -411,18 +414,20 @@ class _SignupState extends State<Signup> {
                 SizedBox(
                   height: 10.0,
                 ),
-                const Padding(
+                Padding(
                   padding: const EdgeInsets.only(left: 10.0, right: 10.0),
                   child: Text(
                     'Confirm Password',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 10.0, right: 10.0),
                   child: TextFormField(
                     controller: confirmPasswordController,
                     obscureText: !_isConfirmPasswordVisible,
                     decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.lock),
                       hintText: 'Enter your password again',
                       hintStyle: TextStyle(color: Colors.grey),
                       border: OutlineInputBorder(
@@ -575,7 +580,7 @@ class _SignupState extends State<Signup> {
                       ),
                     ],
                   ),
-                ]))
+                ])),
               ],
             ),
           ),
