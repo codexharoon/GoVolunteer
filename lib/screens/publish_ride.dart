@@ -57,7 +57,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
     if (_formKey.currentState?.validate() ?? false) {
       await FirebaseFirestore.instance.collection('rides').add({
         'user': widget.user.uid,
-        'name': 'Muhammad Haroon',
+        'name': widget.user.displayName ?? widget.user.email,
         'start': _pickupController.text,
         'end': _destinationController.text,
         'date': _selectedDate.toString().substring(0, 10),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:go_volunteer/screens/profile.dart';
 import 'package:go_volunteer/screens/publish_ride.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   dynamic user;
@@ -14,6 +16,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final CollectionReference rides =
       FirebaseFirestore.instance.collection('rides');
+
+  void _launchPhoneDialer(dynamic phoneNumber) async {
+    final Uri phoneUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      throw 'Could not launch $phoneUri';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     int _currentIndex = 0;
@@ -56,6 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     vehicle: ride['vehicle'],
                     seats: ride['seats'],
                     rating: ride['rating'],
+                    user: widget.user,
+                    launchPhoneDialer: _launchPhoneDialer,
                   );
                 },
               );
@@ -115,6 +132,8 @@ class RideCard extends StatelessWidget {
   final String vehicle;
   final int seats;
   final double rating;
+  final dynamic user;
+  final void Function(String) launchPhoneDialer;
 
   RideCard({
     required this.name,
@@ -125,6 +144,8 @@ class RideCard extends StatelessWidget {
     required this.vehicle,
     required this.seats,
     required this.rating,
+    required this.user,
+    required this.launchPhoneDialer,
   });
 
   @override
@@ -214,7 +235,10 @@ class RideCard extends StatelessWidget {
             ),
             const SizedBox(height: 15),
             GestureDetector(
-              onTap: () {},
+              onTap: () async {
+                await FlutterPhoneDirectCaller.callNumber(
+                    user.phoneNumber ?? '1234567890');
+              },
               child: Container(
                 // margin: const EdgeInsets.only(left: 10, right: 10),
                 padding: const EdgeInsets.all(15),
