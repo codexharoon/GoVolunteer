@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_volunteer/screens/home.dart';
 import 'package:go_volunteer/screens/login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
@@ -31,149 +32,140 @@ class _SignupState extends State<Signup> {
   String passwordStrength = '';
   String emailValidator = '';
   String passwordLength = '';
-
   final RegExp emailRegex = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     caseSensitive: false,
     multiLine: false,
   );
 
-  void onSignUpButtonHandler() async {
+ void onSignUpButtonHandler() async {
+  setState(() {
+    email = emailController.text;
+    password = passwordController.text;
+    confirmPassword = confirmPasswordController.text;
+    emailValidator = '';
+    passwordLength = '';
+    errorText = '';
+  });
+
+  // Checking if any field is empty or terms are not agreed
+  if (!_isAgreedTerms) {
     setState(() {
-      email = emailController.text;
-      password = passwordController.text;
-      confirmPassword = confirmPasswordController.text;
-      emailValidator = '';
-      passwordLength = '';
-      errorText = '';
+      errorText = 'You must agree to the terms';
     });
+    return;
+  }
 
-    // Checking if any field is empty or terms are not agreed
-    if (!_isAgreedTerms) {
-      setState(() {
-        errorText = 'You must agreed to the terms';
-      });
+  // Checking if passwords match
+  if (password != confirmPassword) {
+    setState(() {
+      errorText = 'Password and confirm password must be the same';
+    });
+    return;
+  }
+
+  // Validating email format
+  if (!emailRegex.hasMatch(email)) {
+    setState(() {
+      emailValidator = 'Invalid Email';
+    });
+    return;
+  }
+
+  // Checking password length
+  if (password.length < 8) {
+    setState(() {
+      passwordLength = 'Password length should be greater than 8 characters';
+    });
+    return;
+  }
+  try {
+    // Check if the email already exists in Firestore
+    final userRef = FirebaseFirestore.instance.collection('users');
+    final querySnapshot = await userRef.where('email', isEqualTo: email).get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      showCustomSnackbar(context,
+          'The email is already registered. Please use a different email.');
       return;
     }
 
-    // Checking if passwords match
-    if (password != confirmPassword) {
-      setState(() {
-        errorText = 'Password and confirm password must be the same';
-      });
-      return;
-    }
-
-    // Validating email format
-    if (!emailRegex.hasMatch(email)) {
-      setState(() {
-        emailValidator = 'Invalid Email';
-      });
-      return;
-    }
-
-    // Checking password length
-    if (password.length < 8) {
-      setState(() {
-        passwordLength = 'Password length should be greater than 8 characters';
-      });
-      return;
-    }
+    // Create a new user with Firebase Authentication
+    // If all validations pass, try to create a new user
     try {
-      // Check if the email already exists in Firestore
-      final userRef = FirebaseFirestore.instance.collection('users');
-      final querySnapshot =
-          await userRef.where('email', isEqualTo: email).get();
+      final newUser =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      if (querySnapshot.docs.isNotEmpty) {
-        showCustomSnackbar(context,
-            'The email is already registered. Please use a different email.');
-        return;
-      }
-
-      // Create a new user with Firebase Authentication
-      // If all validations pass, try to create a new user
-      try {
-        final newUser =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-
-        if (newUser.user != null) {
-          // Generate a random number for the guest name
-          final random = Random();
-          final randomNumber =
-              random.nextInt(1000); // Generates a number between 0 and 999
-          // Store user information in Firestore with defaults
-          await userRef.doc(newUser.user!.uid).set({
-            'email': email,
-            'name': 'Guest.$randomNumber',
-            'phone': '123-456-7890',
-            'imageUrl': 'https://example.com/dummy-image.jpg',
-          }).then((_) {
-            print('User data stored in Firestore successfully');
-          }).catchError((error) {
-            print('Error storing user data: $error');
-            showCustomSnackbar(context, 'Error storing user data: $error');
-          });
-
+      if (newUser.user != null) {
+        // Generate a random number for the guest name
+        final random = Random();
+        final randomNumber =
+            random.nextInt(1000); // Generates a number between 0 and 999
+        // Store user information in Firestore with defaults
+        await userRef.doc(newUser.user!.uid).set({
+          'email': email,
+          'name': 'Guest.$randomNumber',
+          'phone': '123-456-7890',
+          'imageUrl': 'https://images.pexels.com/photos/3585092/pexels-photo-3585092.jpeg',
+        }).then((_) {
           setState(() {
-            emailController.clear();
-            passwordController.clear();
-            confirmPasswordController.clear();
-            passwordStrength = '';
-            _isAgreedTerms = false;
-          });
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(newUser.user?.uid)
-              .set({
-            'email': email,
-          }).then((_) {
-            print('User data stored in Firestore successfully');
-          }).catchError((error) {
-            print('Error storing user data: $error');
-          });
-          // Show Snackbar
-          showCustomSnackbar(context, 'User profile created successfully!');
-          // Optionally navigate to the Login screen
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => UserInfoPage(
-                        user: newUser.user,
-                      )));
-        }
-      } catch (e) {
-        // Handle Firebase errors
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'email-already-in-use':
-              showCustomSnackbar(context,
-                  'The email address is already in use by another account.');
-              break;
-            case 'invalid-email':
-              showCustomSnackbar(context, 'The email address is not valid.');
-              break;
-            case 'operation-not-allowed':
-              showCustomSnackbar(
-                  context, 'Email/password accounts are not enabled.');
-              break;
-            case 'weak-password':
-              showCustomSnackbar(context, 'The password is too weak.');
-              break;
-            default:
-              showCustomSnackbar(context, 'An error occurred: ${e.message}');
-          }
-        } else {
-          showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
-        }
+          emailController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
+          passwordStrength = '';
+          _isAgreedTerms = false;
+        });
+          print('User data stored in Firestore successfully');
+
+        }).catchError((error) {
+          print('Error storing user data: $error');
+          showCustomSnackbar(context, 'Error storing user data: $error');
+        });
+
+       
+
+        // Show Snackbar
+        showCustomSnackbar(context, 'User profile created successfully!');
+        // Optionally navigate to the Login screen
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => UserInfoPage(
+                      user: newUser.user,
+                    )));
       }
     } catch (e) {
-      print(e);
+      // Handle Firebase errors
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'email-already-in-use':
+            showCustomSnackbar(context,
+                'The email address is already in use by another account.');
+            break;
+          case 'invalid-email':
+            showCustomSnackbar(context, 'The email address is not valid.');
+            break;
+          case 'operation-not-allowed':
+            showCustomSnackbar(
+                context, 'Email/password accounts are not enabled.');
+            break;
+          case 'weak-password':
+            showCustomSnackbar(context, 'The password is too weak.');
+            break;
+          default:
+            showCustomSnackbar(context, 'An error occurred: ${e.message}');
+        }
+      } else {
+        showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+      }
     }
+  } catch (e) {
+    print(e);
   }
+}
 
   void updatePasswordStrength(String password) {
     if (password.isEmpty) {
@@ -205,91 +197,102 @@ class _SignupState extends State<Signup> {
       });
     }
   }
+Future<void> onGoogleSignInHandler() async {
+  try {
+    print('Starting Google sign-in handler...');
+    FirebaseAuth auth = FirebaseAuth.instance;
+    final GoogleSignIn googleSignIn = GoogleSignIn();
 
-  Future<void> onGoogleSignInHandler() async {
-    try {
-      FirebaseAuth auth = FirebaseAuth.instance;
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-
-      // Triggering the authentication flow
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        // User canceled the sign-in
-        showCustomSnackbar(context, 'Google sign-in was canceled.');
-        return;
-      }
-
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Create a new credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in the user with the credential
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
-
-      // Access the user information
-      final User? user = userCredential.user;
-      if (user != null) {
-        // Check if user already exists in Firestore
-        final userRef =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-        final userData = await userRef.get();
-
-        if (!userData.exists) {
-          // If user does not exist, store user information in Firestore
-          await userRef.set({
-            'name': user.displayName,
-            'email': user.email,
-            'phone': '123-456-7890',
-            'imageUrl': user.photoURL,
-          });
-          showCustomSnackbar(context, 'User profile created successfully!');
-        } else {
-          showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
-        }
-      } else {
-        showCustomSnackbar(
-            context, 'Google sign-in failed. No user information available.');
-      }
-    } catch (e) {
-      String errorMessage;
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'account-exists-with-different-credential':
-            errorMessage =
-                'The account already exists with a different credential.';
-            break;
-          case 'invalid-credential':
-            errorMessage = 'The credential is invalid or expired.';
-            break;
-          case 'operation-not-allowed':
-            errorMessage =
-                'Operation not allowed. Please enable Google sign-in in the Firebase console.';
-            break;
-          case 'user-disabled':
-            errorMessage = 'This user has been disabled.';
-            break;
-          case 'user-not-found':
-            errorMessage = 'No user found for this email.';
-            break;
-          case 'wrong-password':
-            errorMessage = 'Wrong password provided.';
-            break;
-          default:
-            errorMessage = 'An undefined error occurred.';
-        }
-      } else {
-        errorMessage = 'An unknown error occurred.';
-      }
-      showCustomSnackbar(context, errorMessage);
+    // Triggering the authentication flow
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      // User canceled the sign-in
+      showCustomSnackbar(context, 'Google sign-in was canceled.');
+      return;
     }
+    print('Google user signed in successfully.');
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+    print('Google authentication details obtained.');
+
+    // Create a new credential
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Sign in the user with the credential
+    final UserCredential userCredential =
+        await auth.signInWithCredential(credential);
+    print('User signed in with Google credential.');
+
+    // Access the user information
+    final User? user = userCredential.user;
+    if (user != null) {
+      // Check if user already exists in Firestore
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userData = await userRef.get();
+      print('User data retrieved from Firestore.');
+
+      if (!userData.exists) {
+        // If user does not exist, store user information in Firestore
+        await userRef.set({
+          'name': user.displayName,
+          'email': user.email,
+          'phone': '123-456-7890',
+          'imageUrl': user.photoURL,
+        });
+        
+        print('User profile created successfully in Firestore.');
+      } else {
+        showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+      }
+      
+      // Navigate to the home page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen(user: user))
+      );
+    } else {
+      showCustomSnackbar(
+          context, 'Google sign-in failed. No user information available.');
+    }
+  } catch (e) {
+    String errorMessage;
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          errorMessage =
+              'The account already exists with a different credential.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'The credential is invalid or expired.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage =
+              'Operation not allowed. Please enable Google sign-in in the Firebase console.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user has been disabled.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user found for this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        default:
+          errorMessage = 'An undefined error occurred.';
+      }
+    } else {
+      errorMessage = 'An unknown error occurred.';
+    }
+    showCustomSnackbar(context, errorMessage);
   }
+}
 
   @override
   Widget build(BuildContext context) {

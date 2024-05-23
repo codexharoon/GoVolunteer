@@ -106,6 +106,11 @@ class _LoginState extends State<Login> {
           } else {
             showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
           }
+          // Navigate to the home page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen(user: user))
+      );
         } else {
           showCustomSnackbar(
               context, 'Google sign-in failed. No user information available.');
