@@ -15,10 +15,10 @@ class UserInfoPage extends StatefulWidget {
   UserInfoPage({Key? key, required this.user}) : super(key: key);
 
   @override
-  _UserInfoPageState createState() => _UserInfoPageState();
+  UserInfoPageState createState() => UserInfoPageState();
 }
 
-class _UserInfoPageState extends State<UserInfoPage> {
+class UserInfoPageState extends State<UserInfoPage> {
   late String imageUrl = '';
   late String name = '';
   late String phoneNumber = '';

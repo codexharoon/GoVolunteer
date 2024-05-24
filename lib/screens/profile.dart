@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:go_volunteer/components/custom_snack_bar.dart';
+import 'package:go_volunteer/screens/home.dart';
 import 'package:go_volunteer/screens/login.dart';
 import 'package:go_volunteer/screens/user_rides.dart';
-// import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
+import 'package:path/path.dart' as path;
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -14,37 +16,90 @@ class ProfilePage extends StatefulWidget {
   ProfilePage({super.key, required this.user});
 
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  ProfilePageState createState() => ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class ProfilePageState extends State<ProfilePage> {
   late String imageUrl = '';
   late String name = '';
   late String phoneNumber = '';
+  final String? uid = FirebaseAuth.instance.currentUser?.uid;
   File? _imageFile;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
-  Future.delayed(Duration.zero, () async {
-    Map<String, dynamic> userData = await fetchUserData();
-    setState(() {
-      imageUrl = userData['imageUrl'] ?? '';
-      name = userData['name'] ?? '';
-      phoneNumber = userData['phone'] ?? '';
-    });
+    Future.delayed(Duration.zero, () async {
+      Map<String, dynamic> userData = await fetchUserData();
+      setState(() {
+        imageUrl = userData['imageUrl'] ?? '';
+        name = userData['name'] ?? '';
+        phoneNumber = userData['phone'] ?? '';
+      });
 
-    // Update text controllers with fetched data
-    _nameController.text = name;
-    _phoneController.text = phoneNumber;
-  });
+      // Update text controllers with fetched data
+      _nameController.text = name;
+      _phoneController.text = phoneNumber;
+    });
   }
 
+  Future<void> imagePickerHanlder() async {
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      // Do something with the picked image, for example, set it to a state variable
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+
+      // Store the image in Firebase Storage
+      final Reference firebaseStorageRef = FirebaseStorage.instance
+          .ref()
+          .child('images/${path.basename(pickedFile.path)}');
+
+      final UploadTask uploadTask = firebaseStorageRef.putFile(_imageFile!);
+
+      final TaskSnapshot downloadUrl = (await uploadTask.whenComplete(() {}));
+
+      final String url = await downloadUrl.ref.getDownloadURL();
+
+      // Update the imageUrl field with the URL provided by Firebase Storage
+      setState(() {
+        imageUrl = url;
+      });
+
+      // Show a snackbar after successful image uploading
+      showCustomSnackbar(context, 'Image is picked stored in storage');
+    } else {
+      imageUrl = '';
+    }
+  }
 
   void onUpdateProfileButtonHandler() async {
-    // Implement update logic here
+    setState(() {
+      name = _nameController.text;
+      phoneNumber = _phoneController.text;
+    });
+    try {
+      FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'imageUrl': imageUrl,
+        'name': name,
+        'phone': phoneNumber,
+      });
+      Map<String, dynamic> userData = await fetchUserData();
+      setState(() {
+        _nameController.clear();
+        _phoneController.clear();
+      });
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (context) => HomeScreen(user: userData)));
+      showCustomSnackbar(context, 'User profile updated successfully');
+    } catch (e) {
+      showCustomSnackbar(context, '$e.code');
+    }
   }
 
   @override
@@ -52,8 +107,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xFF04BF68),
       body: Container(
-        margin: EdgeInsets.only(
-            top: MediaQuery.of(context).size.height * 0.1),
+        margin: EdgeInsets.only(top: MediaQuery.of(context).size.height * 0.1),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -68,19 +122,20 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () {},
-                    child : ClipOval(
-                      child:  CircleAvatar(
-                      radius: 50,
-                      backgroundImage:
-                          imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                    onTap: imagePickerHanlder,
+                    child: CircleAvatar(
+                      radius: 70,
+                      backgroundColor: Colors.grey,
+                      backgroundImage: _imageFile != null
+                          ? FileImage(_imageFile!) as ImageProvider<Object>
+                          : imageUrl.isNotEmpty
+                              ? NetworkImage(imageUrl)
+                              : null,
                       child: _imageFile == null && imageUrl.isEmpty
                           ? const Icon(Icons.camera_alt,
                               size: 50, color: Colors.white)
                           : null,
                     ),
-                    )
-                    
                   ),
                   const SizedBox(height: 20),
                   TextField(
@@ -98,7 +153,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     controller: _phoneController,
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
-                      hintText: phoneNumber.isNotEmpty ? phoneNumber : 'phoneNumber',
+                      hintText:
+                          phoneNumber.isNotEmpty ? phoneNumber : 'phoneNumber',
                       border: const OutlineInputBorder(),
                       filled: true,
                       fillColor: Colors.white,
