@@ -256,7 +256,7 @@ class RideCard extends StatelessWidget {
                 width: double.infinity,
                 child: const Center(
                     child: Text(
-                  'Call Volunteer',
+                  '☏ Call Volunteer',
                   style: TextStyle(color: Colors.white, fontSize: 20),
                 )),
               ),
