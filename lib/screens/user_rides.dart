@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -13,11 +14,13 @@ class _UserRidesState extends State<UserRides> {
   final CollectionReference rides =
       FirebaseFirestore.instance.collection('rides');
 
+  final String? uid = FirebaseAuth.instance.currentUser?.uid;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: FutureBuilder<QuerySnapshot>(
-        future: rides.where('user', isEqualTo: widget.user.uid).get(),
+        future: rides.where('user', isEqualTo: uid).get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
