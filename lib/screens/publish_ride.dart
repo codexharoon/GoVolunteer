@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:intl/intl.dart';
 
 class PublishRidePage extends StatefulWidget {
@@ -23,7 +24,22 @@ class _PublishRidePageState extends State<PublishRidePage> {
       TextEditingController(text: 'Green Nissan Note - AXK 370');
 
   DateTime _selectedDate = DateTime.now();
-  TimeOfDay _selectedTime = TimeOfDay(hour: 0, minute: 0);
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 0, minute: 0);
+
+  late String phone = '1234567890';
+  late String name = widget.user.email;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () async {
+      Map<String, dynamic> userData = await fetchUserData();
+      setState(() {
+        name = userData['name'] ?? widget.user.email;
+        phone = userData['phone'] ?? '1234567890';
+      });
+    });
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime picked = await showDatePicker(
@@ -57,7 +73,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
     if (_formKey.currentState?.validate() ?? false) {
       await FirebaseFirestore.instance.collection('rides').add({
         'user': widget.user.uid,
-        'name': widget.user.displayName ?? widget.user.email,
+        'name': name,
         'start': _pickupController.text,
         'end': _destinationController.text,
         'date': _selectedDate.toString().substring(0, 10),
@@ -65,6 +81,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
         'seats': int.parse(_seatsController.text),
         'vehicle': _vehicleController.text,
         'rating': 4.5,
+        'phone': phone,
       });
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Ride Published Successfully')));

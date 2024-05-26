@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     vehicle: ride['vehicle'],
                     seats: ride['seats'],
                     rating: ride['rating'],
-                    user: widget.user,
+                    phoneNumber: ride['phone'],
                     launchPhoneDialer: _launchPhoneDialer,
                   );
                 },
@@ -132,7 +132,7 @@ class RideCard extends StatelessWidget {
   final String vehicle;
   final int seats;
   final double rating;
-  final dynamic user;
+  final String phoneNumber;
   final void Function(String) launchPhoneDialer;
 
   RideCard({
@@ -144,7 +144,7 @@ class RideCard extends StatelessWidget {
     required this.vehicle,
     required this.seats,
     required this.rating,
-    required this.user,
+    required this.phoneNumber,
     required this.launchPhoneDialer,
   });
 
@@ -236,8 +236,7 @@ class RideCard extends StatelessWidget {
             const SizedBox(height: 15),
             GestureDetector(
               onTap: () async {
-                await FlutterPhoneDirectCaller.callNumber(
-                    user.phoneNumber ?? '1234567890');
+                await FlutterPhoneDirectCaller.callNumber(phoneNumber);
               },
               child: Container(
                 // margin: const EdgeInsets.only(left: 10, right: 10),
