@@ -25,6 +25,14 @@ class _UserRidesState extends State<UserRides> {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
+          if (snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No rides found.',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            );
+          }
           final data = snapshot.requireData;
 
           return ListView.builder(
