@@ -28,7 +28,7 @@ class UserInfoPageState extends State<UserInfoPage> {
   final TextEditingController _phoneController = TextEditingController();
 
   @override
-  void initState() async {
+  void initState() {
     super.initState();
     Future.delayed(Duration.zero, () async {
       Map<String, dynamic> userData = await fetchUserData();
