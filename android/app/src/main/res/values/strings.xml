@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="facebook_app_id">773702744898420</string>
+    <string name="fb_login_protocol_scheme">fb773702744898420</string>
+    <string name="facebook_client_token">87de1632971a94dd62045f3cd2a115dd</string>
+    <string name="app_name">"go_volunteer"</string>
+
+</resources>
+
+
