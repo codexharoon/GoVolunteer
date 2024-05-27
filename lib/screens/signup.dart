@@ -18,6 +18,7 @@ class Signup extends StatefulWidget {
 }
 
 class _SignupState extends State<Signup> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
@@ -46,7 +47,6 @@ class _SignupState extends State<Signup> {
   }
 
   void onSignUpButtonHandler() async {
-    setLoading(true);
     setState(() {
       email = emailController.text;
       password = passwordController.text;
@@ -55,35 +55,9 @@ class _SignupState extends State<Signup> {
       passwordLength = '';
       errorText = '';
     });
-
-    // Checking if any field is empty or terms are not agreed
-    if (!_isAgreedTerms) {
+    if (!_formKey.currentState!.validate() || !_isAgreedTerms) {
       setState(() {
-        errorText = 'You must agree to the terms';
-      });
-      return;
-    }
-
-    // Checking if passwords match
-    if (password != confirmPassword) {
-      setState(() {
-        errorText = 'Password and confirm password must be the same';
-      });
-      return;
-    }
-
-    // Validating email format
-    if (!emailRegex.hasMatch(email)) {
-      setState(() {
-        emailValidator = 'Invalid Email';
-      });
-      return;
-    }
-
-    // Checking password length
-    if (password.length < 8) {
-      setState(() {
-        passwordLength = 'Password length should be greater than 8 characters';
+        errorText = 'Please fix the errors above and agree to the terms';
       });
       return;
     }
@@ -102,6 +76,7 @@ class _SignupState extends State<Signup> {
       // Create a new user with Firebase Authentication
       // If all validations pass, try to create a new user
       try {
+        setLoading(true);
         final newUser =
             await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
@@ -417,7 +392,8 @@ class _SignupState extends State<Signup> {
       final GitHubSignIn gitHubSignIn = GitHubSignIn(
         clientId: 'Ov23li2kwT8DFDdzpd33',
         clientSecret: '88c6ddd28eb39ea0e72550dbad48c236a1325324',
-        redirectUrl: 'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
+        redirectUrl:
+            'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
       );
 
       // Triggering the authentication flow
@@ -511,7 +487,7 @@ class _SignupState extends State<Signup> {
         errorMessage = 'An unknown error occurred.';
       }
       showCustomSnackbar(context, errorMessage);
-    }finally{
+    } finally {
       setLoading(false);
     }
   }
@@ -528,6 +504,7 @@ class _SignupState extends State<Signup> {
             ? const CircularProgressIndicator()
             : SingleChildScrollView(
                 child: Form(
+                  key: _formKey,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,8 +545,13 @@ class _SignupState extends State<Signup> {
                               ),
                             ),
                             validator: (value) {
-                              if (value?.isEmpty ?? true) {
+                              if (value == null || value.isEmpty) {
                                 return 'Email field cannot be empty';
+                              }
+                              final emailRegex = RegExp(
+                                  r'^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$');
+                              if (!emailRegex.hasMatch(value)) {
+                                return 'Invalid Email';
                               }
                               return null;
                             },
@@ -625,8 +607,11 @@ class _SignupState extends State<Signup> {
                             ),
                           ),
                           validator: (value) {
-                            if (value?.isEmpty ?? true) {
+                            if (value == null || value.isEmpty) {
                               return 'Password field cannot be empty';
+                            }
+                            if (value.length < 8) {
+                              return 'Password length should be greater than 8 characters';
                             }
                             return null;
                           },
@@ -680,8 +665,11 @@ class _SignupState extends State<Signup> {
                             ),
                           ),
                           validator: (value) {
-                            if (value?.isEmpty ?? true) {
+                            if (value == null || value.isEmpty) {
                               return 'Confirm password field cannot be empty';
+                            }
+                            if (value != passwordController.text) {
+                              return 'Password and confirm password must be the same';
                             }
                             return null;
                           },

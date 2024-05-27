@@ -16,6 +16,7 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
@@ -32,21 +33,15 @@ class _LoginState extends State<Login> {
   bool _isPasswordVisible = false;
 
   void onSignInButtonHandler() async {
-    setLoading(true);
-    setState(() {
-      email = emailController.text;
-      password = passwordController.text;
-      errorText = '';
-    });
-
-    // Check if fields are empty or terms are not agreed
-    if (email.isEmpty || password.isEmpty) {
+    if (_formKey.currentState?.validate() ?? false) {
       setState(() {
-        errorText = 'All fields must be filled';
+        email = emailController.text;
+        password = passwordController.text;
+        errorText = '';
       });
     }
-
     try {
+      setLoading(true);
       final loggedinUser = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
       if (loggedinUser.user != null) {
@@ -59,10 +54,30 @@ class _LoginState extends State<Login> {
                     )));
       }
     } catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'invalid-email':
+            errorMessage = 'The email address is badly formatted.';
+            break;
+          case 'user-disabled':
+            errorMessage =
+                'The user corresponding to the given email has been disabled.';
+            break;
+          case 'user-not-found':
+            errorMessage = 'There is no user corresponding to the given email.';
+            break;
+          case 'wrong-password':
+            errorMessage = 'The password is invalid for the given email.';
+            break;
+          default:
+            errorMessage = 'An undefined error occurred.';
+        }
+      }
       setState(() {
-        errorText = e.toString(); // Display the error message
+        errorText = errorMessage;
       });
-      showCustomSnackbar(context, 'An error occurred: ${e.toString()}');
+      showCustomSnackbar(context, 'An error occurred: $errorMessage');
     } finally {
       setLoading(false);
     }
@@ -158,6 +173,7 @@ class _LoginState extends State<Login> {
       setLoading(false);
     }
   }
+
   Future<void> onGitHubSignInHandler() async {
     try {
       setLoading(true);
@@ -168,7 +184,8 @@ class _LoginState extends State<Login> {
       final GitHubSignIn gitHubSignIn = GitHubSignIn(
         clientId: 'Ov23li2kwT8DFDdzpd33',
         clientSecret: '88c6ddd28eb39ea0e72550dbad48c236a1325324',
-        redirectUrl: 'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
+        redirectUrl:
+            'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
       );
 
       // Triggering the authentication flow
@@ -262,11 +279,10 @@ class _LoginState extends State<Login> {
         errorMessage = 'An unknown error occurred.';
       }
       showCustomSnackbar(context, errorMessage);
-    }finally{
+    } finally {
       setLoading(false);
     }
   }
-
 
   // Future<void> onFacebookSignInHandler() async {
   //   try {
@@ -369,7 +385,7 @@ class _LoginState extends State<Login> {
   //     showCustomSnackbar(context, errorMessage);
   //   }
   // }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -378,226 +394,234 @@ class _LoginState extends State<Login> {
             ? const CircularProgressIndicator()
             : SingleChildScrollView(
                 child: Form(
+                    key: _formKey,
                     child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Center(
-                      child: Text(
-                        'Login to your account',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF004643),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Center(
+                          child: Text(
+                            'Login to your account',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF004643),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 10.0, right: 10.0),
-                      child: const Text(
-                        'Email Address',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Padding(
-                        padding: const EdgeInsets.only(left: 10.0, right: 10.0),
-                        child: TextFormField(
-                          controller: emailController,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.email),
-                            hintText: 'Enter your email address',
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(5.0),
-                              borderSide: BorderSide(
-                                width: 1.0,
-                                color: Colors.grey,
+                        const SizedBox(height: 15),
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(left: 10.0, right: 10.0),
+                          child: const Text(
+                            'Email Address',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Padding(
+                            padding:
+                                const EdgeInsets.only(left: 10.0, right: 10.0),
+                            child: TextFormField(
+                              controller: emailController,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.email),
+                                hintText: 'Enter your email address',
+                                hintStyle: TextStyle(color: Colors.grey),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(5.0),
+                                  borderSide: BorderSide(
+                                    width: 1.0,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value?.isEmpty ?? true) {
+                                  return 'Email field cannot be empty';
+                                }
+
+                                return null;
+                              },
+                            )),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(left: 10.0, right: 10.0),
+                          child: const Text(
+                            'Password',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(left: 10.0, right: 10.0),
+                          child: TextFormField(
+                            controller: passwordController,
+                            obscureText: !_isPasswordVisible,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.lock),
+                              hintText: 'Enter your password',
+                              hintStyle: TextStyle(color: Colors.grey),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(5.0),
+                                borderSide: BorderSide(
+                                  width: 1.0,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible;
+                                  });
+                                },
                               ),
                             ),
-                          ),
-                          validator: (value) {
-                            if (value?.isEmpty ?? true) {
-                              return 'Email field cannot be empty';
-                            }
-                            return null;
-                          },
-                        )),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 10.0, right: 10.0),
-                      child: const Text(
-                        'Password',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 10.0, right: 10.0),
-                      child: TextFormField(
-                        controller: passwordController,
-                        obscureText: !_isPasswordVisible,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.lock),
-                          hintText: 'Enter your password',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(5.0),
-                            borderSide: BorderSide(
-                              width: 1.0,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) {
+                                return 'Password field cannot be empty';
+                              }
+                              return null;
                             },
                           ),
                         ),
-                        validator: (value) {
-                          if (value?.isEmpty ?? true) {
-                            return 'Password field cannot be empty';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10.0, left: 10.0),
-                      child: Text(
-                        errorText,
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 10.0,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 20.0, top: 5.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Forget Password ?',
-                            style: TextStyle(color: Colors.grey),
-                          )
-                        ],
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 10.0,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 15.0, right: 10.0),
-                      child: Row(
-                        children: [
-                          Text(
-                            "Don't  have an account ? ",
-                            style: TextStyle(color: Colors.grey),
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(right: 10.0, left: 10.0),
+                          child: Text(
+                            errorText,
+                            style: TextStyle(color: Colors.red),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (builder) => Signup()));
-                            },
-                            child: Text(
-                              'Create Account',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      height: 10.0,
-                    ),
-                    Padding(
-                      padding: EdgeInsets.only(right: 10.0, left: 10.0),
-                      child: SizedBox(
-                          width: double.infinity,
-                          child: TextButton(
-                            onPressed: onSignInButtonHandler,
-                            style: TextButton.styleFrom(
-                              backgroundColor: Color(0xFF04BF68),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.all(15.0),
-                            ),
-                            child: Text('Login'),
-                          )),
-                    ),
-                    Center(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.only(top: 10.0),
-                            child: Text('Other ways to Sign in'),
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                        ),
+                        SizedBox(
+                          height: 10.0,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20.0, top: 5.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              GestureDetector(
-                                onTap: onGoogleSignInHandler,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                  child: CircleAvatar(
-                                    backgroundColor: Color(0xFFFFFFFF),
-                                    radius: 25,
-                                    child: Image.asset(
-                                      'assets/images/google-icon.png',
-                                    ),
-                                  ),
-                                ),
+                              Text(
+                                'Forget Password ?',
+                                style: TextStyle(color: Colors.grey),
+                              )
+                            ],
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 10.0,
+                        ),
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(left: 15.0, right: 10.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                "Don't  have an account ? ",
+                                style: TextStyle(color: Colors.grey),
                               ),
-                              // const SizedBox(width: 10),
-                              // GestureDetector(
-                              //   onTap: onFacebookSignInHandler,
-                              //   child: Container(
-                              //     decoration: BoxDecoration(
-                              //       borderRadius: BorderRadius.circular(25),
-                              //     ),
-                              //     child: CircleAvatar(
-                              //       backgroundColor: Color(0xFFFFFFFF),
-                              //       radius: 25,
-                              //       child: Image.asset(
-                              //         'assets/images/facebook-icon.png',
-                              //       ),
-                              //     ),
-                              //   ),
-                              // ),
-                              const SizedBox(width: 10.0),
                               GestureDetector(
-                                onTap: onGitHubSignInHandler,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                  child: CircleAvatar(
-                                    backgroundColor: Color(0xFFFFFFFF),
-                                    radius: 25,
-                                    child: Image.asset(
-                                      'assets/images/github_icon.png',
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (builder) => Signup()));
+                                },
+                                child: Text(
+                                  'Create Account',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 10.0,
+                        ),
+                        Padding(
+                          padding: EdgeInsets.only(right: 10.0, left: 10.0),
+                          child: SizedBox(
+                              width: double.infinity,
+                              child: TextButton(
+                                onPressed: onSignInButtonHandler,
+                                style: TextButton.styleFrom(
+                                  backgroundColor: Color(0xFF04BF68),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.all(15.0),
+                                ),
+                                child: Text('Login'),
+                              )),
+                        ),
+                        Center(
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(top: 10.0),
+                                child: Text('Other ways to Sign in'),
+                              ),
+                              SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  GestureDetector(
+                                    onTap: onGoogleSignInHandler,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: CircleAvatar(
+                                        backgroundColor: Color(0xFFFFFFFF),
+                                        radius: 25,
+                                        child: Image.asset(
+                                          'assets/images/google-icon.png',
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  // const SizedBox(width: 10),
+                                  // GestureDetector(
+                                  //   onTap: onFacebookSignInHandler,
+                                  //   child: Container(
+                                  //     decoration: BoxDecoration(
+                                  //       borderRadius: BorderRadius.circular(25),
+                                  //     ),
+                                  //     child: CircleAvatar(
+                                  //       backgroundColor: Color(0xFFFFFFFF),
+                                  //       radius: 25,
+                                  //       child: Image.asset(
+                                  //         'assets/images/facebook-icon.png',
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  // ),
+                                  const SizedBox(width: 10.0),
+                                  GestureDetector(
+                                    onTap: onGitHubSignInHandler,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: CircleAvatar(
+                                        backgroundColor: Color(0xFFFFFFFF),
+                                        radius: 25,
+                                        child: Image.asset(
+                                          'assets/images/github_icon.png',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                )),
+                        ),
+                      ],
+                    )),
               ),
       ),
     );
