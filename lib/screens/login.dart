@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_volunteer/screens/forgotPassword.dart';
 // import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:go_volunteer/screens/home.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
@@ -33,12 +34,17 @@ class _LoginState extends State<Login> {
   bool _isPasswordVisible = false;
 
   void onSignInButtonHandler() async {
-    if (_formKey.currentState?.validate() ?? false) {
+    setState(() {
+      email = emailController.text;
+      password = passwordController.text;
+      errorText = '';
+    });
+
+    if (!_formKey.currentState!.validate()) {
       setState(() {
-        email = emailController.text;
-        password = passwordController.text;
-        errorText = '';
+        errorText = 'Please fix the errors and then try again!';
       });
+      return;
     }
     try {
       setLoading(true);
@@ -124,7 +130,7 @@ class _LoginState extends State<Login> {
           await userRef.set({
             'name': user.displayName,
             'email': user.email,
-            'phone': '123-456-7890',
+            'phone': '1234567890',
             'imageUrl': user.photoURL,
           });
           showCustomSnackbar(context, 'User profile created successfully!');
@@ -219,7 +225,7 @@ class _LoginState extends State<Login> {
               await userRef.set({
                 'name': user.displayName,
                 'email': user.email,
-                'phone': '123-456-7890',
+                'phone': '1234567890',
                 'imageUrl': user.photoURL,
               });
 
@@ -498,19 +504,24 @@ class _LoginState extends State<Login> {
                             style: TextStyle(color: Colors.red),
                           ),
                         ),
-                        SizedBox(
+                       const SizedBox(
                           height: 10.0,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 20.0, top: 5.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Forget Password ?',
-                                style: TextStyle(color: Colors.grey),
-                              )
-                            ],
+                        GestureDetector(
+                          onTap: (){
+                            Navigator.push(context, MaterialPageRoute(builder: (context)=> ForgotPassword()));
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 20.0, top: 5.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Forget Password ?',
+                                  style: TextStyle(color: Colors.grey),
+                                )
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(
