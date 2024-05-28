@@ -1,5 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.go_volunteer">    
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+
+
+   <application
         android:label="go_volunteer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -29,5 +34,8 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
+        
     </application>
 </manifest>
