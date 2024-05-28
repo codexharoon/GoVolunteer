@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfilePage extends StatefulWidget {
   dynamic user;
@@ -46,6 +47,26 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> imagePickerHanlder() async {
+    // Check the permission status for accessing photos
+    var permissionStatus = await Permission.manageExternalStorage.status;
+
+    // Request permission if it is denied or restricted
+    if (permissionStatus.isDenied || permissionStatus.isRestricted) {
+      final Map<Permission, PermissionStatus> statuses =
+          await [Permission.manageExternalStorage].request();
+      if (statuses[Permission.manageExternalStorage]!.isDenied) {
+        showCustomSnackbar(context, 'Storage permission denied');
+        return;
+      } else if (statuses[Permission.manageExternalStorage]!
+          .isPermanentlyDenied) {
+        // Direct the user to app settings if permission is permanently denied
+        showCustomSnackbar(context,
+            'Storage permission is permanently denied. Please enable it in the app settings.');
+        openAppSettings();
+        return;
+      }
+    }
+
     final pickedFile =
         await ImagePicker().pickImage(source: ImageSource.gallery);
 
@@ -70,7 +91,6 @@ class ProfilePageState extends State<ProfilePage> {
       setState(() {
         imageUrl = url;
       });
-
       // Show a snackbar after successful image uploading
       showCustomSnackbar(context, 'Image is picked stored in storage');
     } else {
@@ -136,6 +156,12 @@ class ProfilePageState extends State<ProfilePage> {
                               size: 50, color: Colors.white)
                           : null,
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "**Please hold off on updating your profile until you see the message 'Image picked and stored in the database'. Thanks for your patience!**",
+                    style: const TextStyle(
+                        color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
                   TextField(

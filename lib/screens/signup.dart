@@ -91,10 +91,10 @@ class _SignupState extends State<Signup> {
           // Store user information in Firestore with defaults
           await userRef.doc(newUser.user!.uid).set({
             'email': email,
-            'name': 'Guest.$randomNumber',
-            'phone': '123-456-7890',
+            'name': 'Guest$randomNumber',
+            'phone': '1234567890',
             'imageUrl':
-                'https://images.pexels.com/photos/3585092/pexels-photo-3585092.jpeg',
+                '',
           }).then((_) {
             setState(() {
               emailController.clear();
@@ -112,7 +112,7 @@ class _SignupState extends State<Signup> {
           // Show Snackbar
           showCustomSnackbar(context, 'User profile created successfully!');
           // Optionally navigate to the Login screen
-          Navigator.push(
+          Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                   builder: (context) => UserInfoPage(
@@ -227,7 +227,7 @@ class _SignupState extends State<Signup> {
           await userRef.set({
             'name': user.displayName,
             'email': user.email,
-            'phone': '123-456-7890',
+            'phone': '1234567890',
             'imageUrl': user.photoURL,
           });
 
@@ -427,7 +427,7 @@ class _SignupState extends State<Signup> {
               await userRef.set({
                 'name': user.displayName,
                 'email': user.email,
-                'phone': '123-456-7890',
+                'phone': '1234567890',
                 'imageUrl': user.photoURL,
               });
 
