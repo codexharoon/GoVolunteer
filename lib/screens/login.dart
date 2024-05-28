@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:github_sign_in_plus/github_sign_in_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -50,13 +51,17 @@ class _LoginState extends State<Login> {
       setLoading(true);
       final loggedinUser = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
-      if (loggedinUser.user != null) {
-        showCustomSnackbar(context, 'You are logged in!');
+      User? user = loggedinUser.user;
+      if (user != null) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', user.uid);
+        await prefs.setString('userEmail', user.email ?? "");
+        showCustomSnackbar(context, 'Welcome Home!');
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
                 builder: (context) => HomeScreen(
-                      user: loggedinUser.user,
+                      user: user,
                     )));
       }
     } catch (e) {
@@ -133,13 +138,21 @@ class _LoginState extends State<Login> {
             'phone': '1234567890',
             'imageUrl': user.photoURL,
           });
+
           showCustomSnackbar(context, 'User profile created successfully!');
         } else {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', user.uid);
+          await prefs.setString('userEmail', user.email ?? "");
+          showCustomSnackbar(context, 'Welcome Home!,${user.displayName}');
+          Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => HomeScreen(
+                        user: user,
+                      )));
           showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
         }
-        // Navigate to the home page
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => HomeScreen(user: user)));
       } else {
         showCustomSnackbar(
             context, 'Google sign-in failed. No user information available.');
@@ -231,14 +244,18 @@ class _LoginState extends State<Login> {
 
               print('User profile created successfully in Firestore.');
             } else {
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setString('userId', user.uid);
+              await prefs.setString('userEmail', user.email ?? "");
+              showCustomSnackbar(context, 'Welcome Home!');
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => HomeScreen(
+                            user: user,
+                          )));
               showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
             }
-
-            // Navigate to the home page
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => HomeScreen(user: user)));
           } else {
             showCustomSnackbar(context,
                 'GitHub sign-in failed. No user information available.');
@@ -504,12 +521,15 @@ class _LoginState extends State<Login> {
                             style: TextStyle(color: Colors.red),
                           ),
                         ),
-                       const SizedBox(
+                        const SizedBox(
                           height: 10.0,
                         ),
                         GestureDetector(
-                          onTap: (){
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=> ForgotPassword()));
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => ForgotPassword()));
                           },
                           child: const Padding(
                             padding: EdgeInsets.only(right: 20.0, top: 5.0),

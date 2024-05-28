@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
-import 'package:go_volunteer/screens/home.dart';
+import 'package:go_volunteer/screens/login.dart';
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
@@ -26,6 +26,7 @@ class UserInfoPageState extends State<UserInfoPage> {
   File? _imageFile;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  
 
   @override
   void initState() {
@@ -107,13 +108,13 @@ class UserInfoPageState extends State<UserInfoPage> {
         'name': name,
         'phone': phoneNumber,
       });
-      Map<String, dynamic> userData = await fetchUserData();
+  
       setState(() {
         _nameController.clear();
         _phoneController.clear();
       });
       Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: userData)));
+          MaterialPageRoute(builder: (context) => Login()));
       showCustomSnackbar(context, 'User profile updated successfully');
     } catch (e) {
       showCustomSnackbar(context, '$e.code');
@@ -196,7 +197,7 @@ class UserInfoPageState extends State<UserInfoPage> {
                       width: double.infinity,
                       child: const Center(
                           child: Text(
-                        'Save Details',
+                        'Complete Profile',
                         style: TextStyle(color: Colors.white, fontSize: 20),
                       )),
                     ),

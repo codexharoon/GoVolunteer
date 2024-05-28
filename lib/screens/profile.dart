@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
   dynamic user;
@@ -25,9 +26,16 @@ class ProfilePageState extends State<ProfilePage> {
   late String name = '';
   late String phoneNumber = '';
   final String? uid = FirebaseAuth.instance.currentUser?.uid;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   File? _imageFile;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  bool isLoading = false;
+  void setLoading(bool loading) {
+    setState(() {
+      isLoading = loading;
+    });
+  }
 
   @override
   void initState() {
@@ -96,6 +104,18 @@ class ProfilePageState extends State<ProfilePage> {
     } else {
       imageUrl = '';
     }
+  }
+
+  Future<void> signOut() async {
+    setLoading(true);
+    await _auth.signOut();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    setLoading(false);
+    showCustomSnackbar(context, 'Signing out ...');
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (builder) => const Login()));
   }
 
   void onUpdateProfileButtonHandler() async {
@@ -233,12 +253,7 @@ class ProfilePageState extends State<ProfilePage> {
                   ),
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () async {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (builder) => const Login()));
-                    },
+                    onTap: signOut,
                     child: Container(
                       margin: const EdgeInsets.only(left: 10, right: 10),
                       padding: const EdgeInsets.all(15),

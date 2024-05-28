@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:math';
 import 'package:go_volunteer/screens/user_info.dart';
 import 'package:github_sign_in_plus/github_sign_in_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -93,8 +94,7 @@ class _SignupState extends State<Signup> {
             'email': email,
             'name': 'Guest$randomNumber',
             'phone': '1234567890',
-            'imageUrl':
-                '',
+            'imageUrl': '',
           }).then((_) {
             setState(() {
               emailController.clear();
@@ -230,15 +230,18 @@ class _SignupState extends State<Signup> {
             'phone': '1234567890',
             'imageUrl': user.photoURL,
           });
-
           print('User profile created successfully in Firestore.');
         } else {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', user.uid);
+          await prefs.setString('userEmail', user.email ?? "");
+          print('Prefs saved during google sigin');
+          showCustomSnackbar(context, 'Welcome Home!');
+          // Navigate to the home page
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (builder) => HomeScreen(user: user)));
           showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
         }
-
-        // Navigate to the home page
-        Navigator.pushReplacement(context,
-            MaterialPageRoute(builder: (context) => HomeScreen(user: user)));
       } else {
         showCustomSnackbar(
             context, 'Google sign-in failed. No user information available.');
@@ -278,6 +281,7 @@ class _SignupState extends State<Signup> {
       setLoading(false);
     }
   }
+
 //https://go-volunteer-ba404.firebaseapp.com/__/auth/handler
 
   // Future<void> onFacebookSignInHandler() async {
@@ -433,14 +437,18 @@ class _SignupState extends State<Signup> {
 
               print('User profile created successfully in Firestore.');
             } else {
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.setString('userId', user.uid);
+              await prefs.setString('userEmail', user.email ?? "");
+              print('Prefs saved during github sigin');
+              showCustomSnackbar(context, 'Welcome Home!');
+              // Navigate to the home page
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => HomeScreen(user: user)));
               showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
             }
-
-            // Navigate to the home page
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => HomeScreen(user: user)));
           } else {
             showCustomSnackbar(context,
                 'GitHub sign-in failed. No user information available.');
