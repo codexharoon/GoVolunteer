@@ -68,31 +68,36 @@ class _PublishRidePageState extends State<PublishRidePage> {
 
   void _submitData() async {
     if (_formKey.currentState?.validate() ?? false) {
-      final String formattedDate =
-          DateFormat('EEE, dd MMM yyyy').format(_selectedDate);
-      final String formattedTime = DateFormat.jm().format(DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      ));
+      try {
+        final String formattedDate =
+            DateFormat('EEE, dd MMM yyyy').format(_selectedDate);
+        final String formattedTime = DateFormat.jm().format(DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          _selectedTime.hour,
+          _selectedTime.minute,
+        ));
 
-      await FirebaseFirestore.instance.collection('rides').add({
-        'user': uid,
-        'name': name,
-        'start': _pickupController.text,
-        'end': _destinationController.text,
-        'date': formattedDate,
-        'time': formattedTime,
-        'seats': int.parse(_seatsController.text),
-        'vehicle': _vehicleController.text,
-        'rating': 4.5,
-        'phone': phone,
-      });
+        await FirebaseFirestore.instance.collection('rides').add({
+          'user': uid,
+          'name': name,
+          'start': _pickupController.text,
+          'end': _destinationController.text,
+          'date': formattedDate,
+          'time': formattedTime,
+          'seats': int.parse(_seatsController.text),
+          'vehicle': _vehicleController.text,
+          'rating': 4.5,
+          'phone': phone,
+        });
 
-      showCustomSnackbar(context, 'Ride Published Successfully');
-      Navigator.pop(context);
+        showCustomSnackbar(context, 'Ride Published Successfully');
+        Navigator.pop(context);
+      } catch (e) {
+        showCustomSnackbar(
+            context, 'An error occurred. Please try again later.');
+      }
     }
   }
 
