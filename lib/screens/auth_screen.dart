@@ -27,7 +27,8 @@ class AuthScreen extends StatelessWidget {
             const SizedBox(height: 150),
             GestureDetector(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (builder) => Signup()));
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (builder) => const Signup()));
               },
               child: Container(
                 margin: const EdgeInsets.only(left: 20, right: 20),
@@ -47,7 +48,8 @@ class AuthScreen extends StatelessWidget {
             const SizedBox(height: 5),
             GestureDetector(
               onTap: () {
-                 Navigator.push(context, MaterialPageRoute(builder: (builder) => Login()));
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (builder) => const Login()));
               },
               child: const SizedBox(
                 width: double.infinity,
