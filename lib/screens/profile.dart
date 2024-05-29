@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
   dynamic user;
@@ -21,13 +22,21 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfilePageState extends State<ProfilePage> {
+  final _formKey = GlobalKey<FormState>();
   late String imageUrl = '';
   late String name = '';
   late String phoneNumber = '';
   final String? uid = FirebaseAuth.instance.currentUser?.uid;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   File? _imageFile;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  bool isLoading = false;
+  void setLoading(bool loading) {
+    setState(() {
+      isLoading = loading;
+    });
+  }
 
   @override
   void initState() {
@@ -98,7 +107,23 @@ class ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> signOut() async {
+    setLoading(true);
+    await _auth.signOut();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId');
+    await prefs.remove('userEmail');
+    setLoading(false);
+    showCustomSnackbar(context, 'Signing out ...');
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (builder) => const Login()));
+  }
+
   void onUpdateProfileButtonHandler() async {
+    if (!_formKey.currentState!.validate()) {
+      showCustomSnackbar(context, 'Please fill the form fields and Try again');
+      return;
+    }
     setState(() {
       name = _nameController.text;
       phoneNumber = _phoneController.text;
@@ -139,123 +164,134 @@ class ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(16.0),
           child: Center(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: imagePickerHanlder,
-                    child: CircleAvatar(
-                      radius: 70,
-                      backgroundColor: Colors.grey,
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!) as ImageProvider<Object>
-                          : imageUrl.isNotEmpty
-                              ? NetworkImage(imageUrl)
-                              : null,
-                      child: _imageFile == null && imageUrl.isEmpty
-                          ? const Icon(Icons.camera_alt,
-                              size: 50, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "**Please hold off on updating your profile until you see the message 'Image picked and stored in the database'. Thanks for your patience!**",
-                    style: const TextStyle(
-                        color: Colors.orange, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Name',
-                      hintText: name.isNotEmpty ? name : 'name',
-                      border: const OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: InputDecoration(
-                      labelText: 'Phone Number',
-                      hintText:
-                          phoneNumber.isNotEmpty ? phoneNumber : 'phoneNumber',
-                      border: const OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: onUpdateProfileButtonHandler,
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 10, right: 10),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color(0xFF04BF68),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: imagePickerHanlder,
+                      child: CircleAvatar(
+                        radius: 70,
+                        backgroundColor: Colors.grey,
+                        backgroundImage: _imageFile != null
+                            ? FileImage(_imageFile!) as ImageProvider<Object>
+                            : imageUrl.isNotEmpty
+                                ? NetworkImage(imageUrl)
+                                : null,
+                        child: _imageFile == null && imageUrl.isEmpty
+                            ? const Icon(Icons.camera_alt,
+                                size: 50, color: Colors.white)
+                            : null,
                       ),
-                      width: double.infinity,
-                      child: const Center(
-                        child: Text(
-                          'Update Profile',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "**Please hold off on updating your profile until you see the message 'Image picked and stored in the database'. Thanks for your patience!**",
+                      style: const TextStyle(
+                          color: Colors.orange, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          hintText: name.isNotEmpty ? name : 'name',
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Name field cannot be empty';
+                          }
+
+                          return null;
+                        }),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                        controller: _phoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: phoneNumber.isNotEmpty
+                              ? phoneNumber
+                              : 'phoneNumber',
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Phone field cannot be empty!';
+                          }
+
+                          return null;
+                        }),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: onUpdateProfileButtonHandler,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 10, right: 10),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          color: const Color(0xFF04BF68),
+                        ),
+                        width: double.infinity,
+                        child: const Center(
+                          child: Text(
+                            'Update Profile',
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (builder) => UserRides(
-                                    user: widget.user,
-                                  )));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 10, right: 10),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color(0xFFD97365),
-                      ),
-                      width: double.infinity,
-                      child: const Center(
-                        child: Text(
-                          'My Rides',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (builder) => UserRides(
+                                      user: widget.user,
+                                    )));
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 10, right: 10),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          color: const Color(0xFFD97365),
+                        ),
+                        width: double.infinity,
+                        child: const Center(
+                          child: Text(
+                            'My Rides',
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () async {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (builder) => const Login()));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 10, right: 10),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: Colors.red,
-                      ),
-                      width: double.infinity,
-                      child: const Center(
-                        child: Text(
-                          'Sign out',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: signOut,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 10, right: 10),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          color: Colors.red,
+                        ),
+                        width: double.infinity,
+                        child: const Center(
+                          child: Text(
+                            'Sign out',
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
