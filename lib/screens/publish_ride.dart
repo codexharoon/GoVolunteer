@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_volunteer/components/custom_snack_bar.dart';
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:intl/intl.dart';
 
@@ -25,7 +26,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
       TextEditingController(text: 'Green Nissan Note - AXK 370');
 
   DateTime _selectedDate = DateTime.now();
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 0, minute: 0);
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   late String phone = '1234567890';
   late String name = widget.user.email;
@@ -58,7 +59,7 @@ class _PublishRidePageState extends State<PublishRidePage> {
           initialTime: _selectedTime,
         ) ??
         _selectedTime;
-    if (picked != _selectedTime)
+    if (picked != null)
       setState(() {
         _selectedTime = picked;
         _timeController.text = _selectedTime.format(context);
@@ -67,20 +68,30 @@ class _PublishRidePageState extends State<PublishRidePage> {
 
   void _submitData() async {
     if (_formKey.currentState?.validate() ?? false) {
+      final String formattedDate =
+          DateFormat('EEE, dd MMM yyyy').format(_selectedDate);
+      final String formattedTime = DateFormat.jm().format(DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      ));
+
       await FirebaseFirestore.instance.collection('rides').add({
         'user': uid,
         'name': name,
         'start': _pickupController.text,
         'end': _destinationController.text,
-        'date': _selectedDate.toString().substring(0, 10),
-        'time': '${_selectedTime.hour}:${_selectedTime.minute}',
+        'date': formattedDate,
+        'time': formattedTime,
         'seats': int.parse(_seatsController.text),
         'vehicle': _vehicleController.text,
         'rating': 4.5,
         'phone': phone,
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Ride Published Successfully')));
+
+      showCustomSnackbar(context, 'Ride Published Successfully');
       Navigator.pop(context);
     }
   }
