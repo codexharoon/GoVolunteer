@@ -181,106 +181,212 @@ class _SignupState extends State<Signup> {
     }
   }
 
-  Future<void> onGoogleSignInHandler() async {
-    setLoading(true);
-    try {
-      print('Starting Google sign-in handler...');
-      FirebaseAuth auth = FirebaseAuth.instance;
-      final GoogleSignIn googleSignIn = GoogleSignIn();
+Future<void> onGoogleSignInHandler() async {
+  setLoading(true);
+  try {
+    FirebaseAuth auth = FirebaseAuth.instance;
+    final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      // Triggering the authentication flow
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        // User canceled the sign-in
-        showCustomSnackbar(context, 'Google sign-in was canceled.');
-        return;
-      }
-      print('Google user signed in successfully.');
-
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      print('Google authentication details obtained.');
-
-      // Create a new credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in the user with the credential
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
-      print('User signed in with Google credential.');
-
-      // Access the user information
-      final User? user = userCredential.user;
-      if (user != null) {
-        // Check if user already exists in Firestore
-        final userRef =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-        final userData = await userRef.get();
-        print('User data retrieved from Firestore.');
-
-        if (!userData.exists) {
-          // If user does not exist, store user information in Firestore
-          await userRef.set({
-            'name': user.displayName,
-            'email': user.email,
-            'phone': '1234567890',
-            'imageUrl': user.photoURL,
-          });
-          print('User profile created successfully in Firestore.');
-        } else {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userId', user.uid);
-          await prefs.setString('userEmail', user.email ?? "");
-          print('Prefs saved during google sigin');
-          showCustomSnackbar(context, 'Welcome Home!');
-          // Navigate to the home page
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (builder) => HomeScreen(user: user)));
-          showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
-        }
-      } else {
-        showCustomSnackbar(
-            context, 'Google sign-in failed. No user information available.');
-      }
-    } catch (e) {
-      String errorMessage;
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'account-exists-with-different-credential':
-            errorMessage =
-                'The account already exists with a different credential.';
-            break;
-          case 'invalid-credential':
-            errorMessage = 'The credential is invalid or expired.';
-            break;
-          case 'operation-not-allowed':
-            errorMessage =
-                'Operation not allowed. Please enable Google sign-in in the Firebase console.';
-            break;
-          case 'user-disabled':
-            errorMessage = 'This user has been disabled.';
-            break;
-          case 'user-not-found':
-            errorMessage = 'No user found for this email.';
-            break;
-          case 'wrong-password':
-            errorMessage = 'Wrong password provided.';
-            break;
-          default:
-            errorMessage = 'An undefined error occurred.';
-        }
-      } else {
-        errorMessage = 'An unknown error occurred.';
-      }
-      showCustomSnackbar(context, errorMessage);
-    } finally {
-      setLoading(false);
+    // Triggering the authentication flow
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      // User canceled the sign-in
+      showCustomSnackbar(context, 'Google sign-in was canceled.');
+      return;
     }
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+    // Create a new credential
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Check if user already exists in Firestore
+    final userRef = FirebaseFirestore.instance.collection('users').where('email', isEqualTo: googleUser.email);
+    final userSnapshot = await userRef.get();
+
+    if (userSnapshot.docs.isNotEmpty) {
+      // User already exists with a different credential
+      showCustomSnackbar(context, 'The account already exists with a different credential.');
+      return;
+    }
+
+    // Sign in the user with the credential
+    final UserCredential userCredential = await auth.signInWithCredential(credential);
+
+    // Access the user information
+    final User? user = userCredential.user;
+    if (user != null) {
+      // Store user information in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': user.displayName,
+        'email': user.email,
+        'phone': '1234567890', // Consider obtaining phone number dynamically if needed
+        'imageUrl': user.photoURL,
+      });
+
+      // Store user data in SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', user.uid);
+      await prefs.setString('userEmail', user.email ?? "");
+
+      showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(user: user),
+        ),
+      );
+    } else {
+      // In case user is null after sign-in (should be very rare)
+      showCustomSnackbar(context, 'Google sign-in failed. No user information available.');
+    }
+  } catch (e) {
+    String errorMessage;
+    if (e is FirebaseAuthException) {
+      print(e.code);
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          errorMessage = 'The account already exists with a different credential.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'The credential is invalid or expired.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Operation not allowed. Please enable Google sign-in in the Firebase console.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user has been disabled.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user found for this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        default:
+          errorMessage = 'Google sign-in failed, please try again!';
+      }
+    } else {
+      errorMessage = 'An unknown error occurred. Please try again.';
+    }
+    showCustomSnackbar(context, errorMessage);
+  } finally {
+    setLoading(false);
   }
+}
+
+Future<void> onGitHubSignInHandler() async {
+  try {
+    setLoading(true);
+    print('Starting GitHub sign-in handler...');
+    FirebaseAuth auth = FirebaseAuth.instance;
+
+    // Configure GitHub sign-in
+    final GitHubSignIn gitHubSignIn = GitHubSignIn(
+      clientId: 'Ov23li2kwT8DFDdzpd33',
+      clientSecret: '88c6ddd28eb39ea0e72550dbad48c236a1325324',
+      redirectUrl: 'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
+    );
+
+    // Triggering the authentication flow
+    var result = await gitHubSignIn.signIn(context);
+
+    switch (result.status) {
+      case GitHubSignInResultStatus.ok:
+        print('GitHub user signed in successfully.');
+        print('Access Token: ${result.token}');
+
+        // Obtain the auth details from the request
+        final AuthCredential credential = GithubAuthProvider.credential(result.token!);
+
+        // Sign in the user with the credential
+        final UserCredential userCredential = await auth.signInWithCredential(credential);
+        print('User signed in with GitHub credential.');
+
+        // Access the user information
+        final User? user = userCredential.user;
+        print(user);
+        if (user != null) {
+          // Check if user already exists in Firestore
+          final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          final userData = await userRef.get();
+          print('User data retrieved from Firestore.');
+
+          if (!userData.exists) {
+            // If user does not exist, store user information in Firestore
+            await userRef.set({
+              'name': user.displayName,
+              'email': user.email,
+              'phone': '1234567890', // Consider obtaining phone number dynamically if needed
+              'imageUrl': user.photoURL,
+            });
+
+            print('User profile created successfully in Firestore.');
+            showCustomSnackbar(context, 'User profile created successfully!');
+          } 
+            // If user exists, retrieve data and store in SharedPreferences
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('userId', user.uid);
+            await prefs.setString('userEmail', user.email ?? "");
+
+            showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(user: user),
+              ),
+            );
+        } else {
+          showCustomSnackbar(context, 'GitHub sign-in failed. No user information available.');
+        }
+        break;
+
+      case GitHubSignInResultStatus.cancelled:
+        showCustomSnackbar(context, 'GitHub sign-in was canceled.');
+        break;
+
+      case GitHubSignInResultStatus.failed:
+        showCustomSnackbar(context, 'GitHub sign-in failed. Please try again. Error: ${result.errorMessage}');
+        break;
+    }
+  } catch (e) {
+    String errorMessage;
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'account-exists-with-different-credential':
+          errorMessage = 'The account already exists with a different credential.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'The credential is invalid or expired.';
+          break;
+        case 'operation-not-allowed':
+          errorMessage = 'Operation not allowed. Please enable GitHub sign-in in the Firebase console.';
+          break;
+        case 'user-disabled':
+          errorMessage = 'This user has been disabled.';
+          break;
+        case 'user-not-found':
+          errorMessage = 'No user found for this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Wrong password provided.';
+          break;
+        default:
+          errorMessage = 'An undefined error occurred.';
+      }
+    } else {
+      errorMessage = 'An unknown error occurred.';
+    }
+    showCustomSnackbar(context, errorMessage);
+  } finally {
+    setLoading(false);
+  }
+}
 
 //https://go-volunteer-ba404.firebaseapp.com/__/auth/handler
 
@@ -386,119 +492,119 @@ class _SignupState extends State<Signup> {
   //   }
   // }
 
-  Future<void> onGitHubSignInHandler() async {
-    try {
-      setLoading(true);
-      print('Starting GitHub sign-in handler...');
-      FirebaseAuth auth = FirebaseAuth.instance;
+  // Future<void> onGitHubSignInHandler() async {
+  //   try {
+  //     setLoading(true);
+  //     print('Starting GitHub sign-in handler...');
+  //     FirebaseAuth auth = FirebaseAuth.instance;
 
-      // Configure GitHub sign-in
-      final GitHubSignIn gitHubSignIn = GitHubSignIn(
-        clientId: 'Ov23li2kwT8DFDdzpd33',
-        clientSecret: '88c6ddd28eb39ea0e72550dbad48c236a1325324',
-        redirectUrl:
-            'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
-      );
+  //     // Configure GitHub sign-in
+  //     final GitHubSignIn gitHubSignIn = GitHubSignIn(
+  //       clientId: 'Ov23li2kwT8DFDdzpd33',
+  //       clientSecret: '88c6ddd28eb39ea0e72550dbad48c236a1325324',
+  //       redirectUrl:
+  //           'https://go-volunteer-ba404.firebaseapp.com/__/auth/handler',
+  //     );
 
-      // Triggering the authentication flow
-      var result = await gitHubSignIn.signIn(context);
+  //     // Triggering the authentication flow
+  //     var result = await gitHubSignIn.signIn(context);
 
-      switch (result.status) {
-        case GitHubSignInResultStatus.ok:
-          print('GitHub user signed in successfully.');
-          print('Access Token: ${result.token}');
+  //     switch (result.status) {
+  //       case GitHubSignInResultStatus.ok:
+  //         print('GitHub user signed in successfully.');
+  //         print('Access Token: ${result.token}');
 
-          // Obtain the auth details from the request
-          final AuthCredential credential =
-              GithubAuthProvider.credential(result.token!);
+  //         // Obtain the auth details from the request
+  //         final AuthCredential credential =
+  //             GithubAuthProvider.credential(result.token!);
 
-          // Sign in the user with the credential
-          final UserCredential userCredential =
-              await auth.signInWithCredential(credential);
-          print('User signed in with GitHub credential.');
+  //         // Sign in the user with the credential
+  //         final UserCredential userCredential =
+  //             await auth.signInWithCredential(credential);
+  //         print('User signed in with GitHub credential.');
 
-          // Access the user information
-          final User? user = userCredential.user;
-          print(user);
-          if (user != null) {
-            // Check if user already exists in Firestore
-            final userRef =
-                FirebaseFirestore.instance.collection('users').doc(user.uid);
-            final userData = await userRef.get();
-            print('User data retrieved from Firestore.');
+  //         // Access the user information
+  //         final User? user = userCredential.user;
+  //         print(user);
+  //         if (user != null) {
+  //           // Check if user already exists in Firestore
+  //           final userRef =
+  //               FirebaseFirestore.instance.collection('users').doc(user.uid);
+  //           final userData = await userRef.get();
+  //           print('User data retrieved from Firestore.');
 
-            if (!userData.exists) {
-              await userRef.set({
-                'name': user.displayName,
-                'email': user.email,
-                'phone': '1234567890',
-                'imageUrl': user.photoURL,
-              });
+  //           if (!userData.exists) {
+  //             await userRef.set({
+  //               'name': user.displayName,
+  //               'email': user.email,
+  //               'phone': '1234567890',
+  //               'imageUrl': user.photoURL,
+  //             });
 
-              print('User profile created successfully in Firestore.');
-            } else {
-              SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.setString('userId', user.uid);
-              await prefs.setString('userEmail', user.email ?? "");
-              print('Prefs saved during github sigin');
-              showCustomSnackbar(context, 'Welcome Home!');
-              // Navigate to the home page
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => HomeScreen(user: user)));
-              showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
-            }
-          } else {
-            showCustomSnackbar(context,
-                'GitHub sign-in failed. No user information available.');
-          }
-          break;
+  //             print('User profile created successfully in Firestore.');
+  //           } else {
+  //             SharedPreferences prefs = await SharedPreferences.getInstance();
+  //             await prefs.setString('userId', user.uid);
+  //             await prefs.setString('userEmail', user.email ?? "");
+  //             print('Prefs saved during github sigin');
+  //             showCustomSnackbar(context, 'Welcome Home!');
+  //             // Navigate to the home page
+  //             Navigator.pushReplacement(
+  //                 context,
+  //                 MaterialPageRoute(
+  //                     builder: (context) => HomeScreen(user: user)));
+  //             showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+  //           }
+  //         } else {
+  //           showCustomSnackbar(context,
+  //               'GitHub sign-in failed. No user information available.');
+  //         }
+  //         break;
 
-        case GitHubSignInResultStatus.cancelled:
-          showCustomSnackbar(context, 'GitHub sign-in was canceled.');
-          break;
+  //       case GitHubSignInResultStatus.cancelled:
+  //         showCustomSnackbar(context, 'GitHub sign-in was canceled.');
+  //         break;
 
-        case GitHubSignInResultStatus.failed:
-          showCustomSnackbar(context,
-              'GitHub sign-in failed. Please try again. Error: ${result.errorMessage}');
-          break;
-      }
-    } catch (e) {
-      String errorMessage;
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'account-exists-with-different-credential':
-            errorMessage =
-                'The account already exists with a different credential.';
-            break;
-          case 'invalid-credential':
-            errorMessage = 'The credential is invalid or expired.';
-            break;
-          case 'operation-not-allowed':
-            errorMessage =
-                'Operation not allowed. Please enable GitHub sign-in in the Firebase console.';
-            break;
-          case 'user-disabled':
-            errorMessage = 'This user has been disabled.';
-            break;
-          case 'user-not-found':
-            errorMessage = 'No user found for this email.';
-            break;
-          case 'wrong-password':
-            errorMessage = 'Wrong password provided.';
-            break;
-          default:
-            errorMessage = 'An undefined error occurred.';
-        }
-      } else {
-        errorMessage = 'An unknown error occurred.';
-      }
-      showCustomSnackbar(context, errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }
+  //       case GitHubSignInResultStatus.failed:
+  //         showCustomSnackbar(context,
+  //             'GitHub sign-in failed. Please try again. Error: ${result.errorMessage}');
+  //         break;
+  //     }
+  //   } catch (e) {
+  //     String errorMessage;
+  //     if (e is FirebaseAuthException) {
+  //       switch (e.code) {
+  //         case 'account-exists-with-different-credential':
+  //           errorMessage =
+  //               'The account already exists with a different credential.';
+  //           break;
+  //         case 'invalid-credential':
+  //           errorMessage = 'The credential is invalid or expired.';
+  //           break;
+  //         case 'operation-not-allowed':
+  //           errorMessage =
+  //               'Operation not allowed. Please enable GitHub sign-in in the Firebase console.';
+  //           break;
+  //         case 'user-disabled':
+  //           errorMessage = 'This user has been disabled.';
+  //           break;
+  //         case 'user-not-found':
+  //           errorMessage = 'No user found for this email.';
+  //           break;
+  //         case 'wrong-password':
+  //           errorMessage = 'Wrong password provided.';
+  //           break;
+  //         default:
+  //           errorMessage = 'An undefined error occurred.';
+  //       }
+  //     } else {
+  //       errorMessage = 'An unknown error occurred.';
+  //     }
+  //     showCustomSnackbar(context, errorMessage);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
