@@ -29,11 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  int _currentIndex = 0;
+  final PageController _pageController = PageController();
+
   @override
   Widget build(BuildContext context) {
-    int _currentIndex = 0;
-    final PageController _pageController = PageController();
-
     return Scaffold(
       // appBar: AppBar(
       //   title: const Text('Go Volunteer'),
@@ -118,7 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(
+              Icons.home,
+            ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
@@ -126,6 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Profile',
           ),
         ],
+        unselectedItemColor: Colors.grey,
+        selectedItemColor: Colors.green,
       ),
     );
   }

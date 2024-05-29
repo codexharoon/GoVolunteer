@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_volunteer/components/custom_snack_bar.dart';
-import 'package:go_volunteer/screens/home.dart';
+import 'package:go_volunteer/screens/login.dart';
 import 'package:go_volunteer/utilities/fetch_user_data.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
@@ -19,6 +19,7 @@ class UserInfoPage extends StatefulWidget {
 }
 
 class UserInfoPageState extends State<UserInfoPage> {
+  final _formKey = GlobalKey<FormState>();
   late String imageUrl = '';
   late String name = '';
   late String phoneNumber = '';
@@ -97,6 +98,10 @@ class UserInfoPageState extends State<UserInfoPage> {
   }
 
   void onUpdateProfileButtonHandler() async {
+    if (!_formKey.currentState!.validate()) {
+      showCustomSnackbar(context, 'Please fill the form fields and Try again');
+      return;
+    }
     setState(() {
       name = _nameController.text;
       phoneNumber = _phoneController.text;
@@ -107,13 +112,13 @@ class UserInfoPageState extends State<UserInfoPage> {
         'name': name,
         'phone': phoneNumber,
       });
-      Map<String, dynamic> userData = await fetchUserData();
+
       setState(() {
         _nameController.clear();
         _phoneController.clear();
       });
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: userData)));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => Login()));
       showCustomSnackbar(context, 'User profile updated successfully');
     } catch (e) {
       showCustomSnackbar(context, '$e.code');
@@ -137,72 +142,87 @@ class UserInfoPageState extends State<UserInfoPage> {
           padding: const EdgeInsets.all(16.0),
           child: Center(
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: imagePickerHanlder,
-                    child: CircleAvatar(
-                      radius: 70,
-                      backgroundColor: Colors.grey,
-                      backgroundImage: _imageFile != null
-                          ? FileImage(_imageFile!) as ImageProvider<Object>
-                          : imageUrl.isNotEmpty
-                              ? NetworkImage(imageUrl)
-                              : null,
-                      child: _imageFile == null && imageUrl.isEmpty
-                          ? const Icon(Icons.camera_alt,
-                              size: 50, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "**Please hold off on updating your profile until you see the message 'Image picked and stored in the database'. Thanks for your patience!**",
-                    style: const TextStyle(
-                        color: Colors.orange, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      hintText: 'name',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number',
-                      hintText: 'phoneNumber',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: onUpdateProfileButtonHandler,
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 10, right: 10),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color(0xFF04BF68),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: imagePickerHanlder,
+                      child: CircleAvatar(
+                        radius: 70,
+                        backgroundColor: Colors.grey,
+                        backgroundImage: _imageFile != null
+                            ? FileImage(_imageFile!) as ImageProvider<Object>
+                            : imageUrl.isNotEmpty
+                                ? NetworkImage(imageUrl)
+                                : null,
+                        child: _imageFile == null && imageUrl.isEmpty
+                            ? const Icon(Icons.camera_alt,
+                                size: 50, color: Colors.white)
+                            : null,
                       ),
-                      width: double.infinity,
-                      child: const Center(
-                          child: Text(
-                        'Save Details',
-                        style: TextStyle(color: Colors.white, fontSize: 20),
-                      )),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                    const SizedBox(height: 20),
+                    const Text(
+                      "**Please hold off on updating your profile until you see the message 'Image picked and stored in the database'. Thanks for your patience!**",
+                      style: const TextStyle(
+                          color: Colors.orange, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Name',
+                          hintText: 'name',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Name field cannot be empty';
+                          }
+
+                          return null;
+                        }),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: 'phoneNumber',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Phone field cannot be empty';
+                          }
+
+                          return null;
+                        }),
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: onUpdateProfileButtonHandler,
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 10, right: 10),
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          color: const Color(0xFF04BF68),
+                        ),
+                        width: double.infinity,
+                        child: const Center(
+                            child: Text(
+                          'Complete Profile',
+                          style: TextStyle(color: Colors.white, fontSize: 20),
+                        )),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
               ),
             ),
           ),
