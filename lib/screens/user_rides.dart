@@ -147,18 +147,20 @@ class UserRideCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Vehicle',
-                      style: TextStyle(color: Colors.grey, fontSize: 17),
-                    ),
-                    Text(
-                      '$vehicle',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Vehicle',
+                        style: TextStyle(color: Colors.grey, fontSize: 17),
+                      ),
+                      Text(
+                        '$vehicle',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
                 Column(
                   children: [
