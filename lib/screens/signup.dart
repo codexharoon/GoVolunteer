@@ -271,10 +271,9 @@ Future<void> onGoogleSignInHandler() async {
         default:
           errorMessage = 'Google sign-in failed, please try again!';
       }
-    } else {
-      errorMessage = 'An unknown error occurred. Please try again.';
+       showCustomSnackbar(context, errorMessage);
     }
-    showCustomSnackbar(context, errorMessage);
+   
   } finally {
     setLoading(false);
   }
