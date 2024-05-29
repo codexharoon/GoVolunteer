@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_volunteer/screens/auth_screen.dart';
 import 'package:go_volunteer/screens/home.dart';
@@ -38,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
           await Future.delayed(const Duration(seconds: 2));
           Navigator.pushReplacement(context,
               MaterialPageRoute(builder: (context) => HomeScreen(user: user)));
-        } 
+        }
       } else {
         // User is not logged in, navigate to AuthScreen
         await Future.delayed(const Duration(seconds: 2));
@@ -50,24 +51,31 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF04BF68),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/splash-2.png',
-            ),
-            const Text(
-              'Lets Travel Together',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
+    return Theme(
+      data: ThemeData(
+        textTheme: GoogleFonts.dancingScriptTextTheme(
+          Theme.of(context).textTheme,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF04BF68),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/splash-2.png',
               ),
-              textAlign: TextAlign.center,
-            )
-          ],
+              const Text(
+                'Lets Travel Together',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                ),
+                textAlign: TextAlign.center,
+              )
+            ],
+          ),
         ),
       ),
     );

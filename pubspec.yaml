@@ -48,6 +48,7 @@ dependencies:
   github_sign_in_plus: ^0.0.2
   shared_preferences: ^2.2.3
   connectivity_plus: ^6.0.3
+  google_fonts: ^4.0.4
   # flutter_facebook_auth: ^7.0.0
 
 dev_dependencies:
