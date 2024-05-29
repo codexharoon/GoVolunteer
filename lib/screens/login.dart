@@ -116,17 +116,6 @@ Future<void> onGoogleSignInHandler() async {
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
-
-    // Check if user already exists in Firestore
-    final userRef = FirebaseFirestore.instance.collection('users').where('email', isEqualTo: googleUser.email);
-    final userSnapshot = await userRef.get();
-
-    if (userSnapshot.docs.isNotEmpty) {
-      // User already exists with a different credential
-      showCustomSnackbar(context, 'The account already exists with a different credential.');
-      return;
-    }
-
     // Sign in the user with the credential
     final UserCredential userCredential = await auth.signInWithCredential(credential);
 
