@@ -67,23 +67,7 @@ class _LoginState extends State<Login> {
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
       if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'invalid-email':
-            errorMessage = 'The email address is badly formatted.';
-            break;
-          case 'user-disabled':
-            errorMessage =
-                'The user corresponding to the given email has been disabled.';
-            break;
-          case 'user-not-found':
-            errorMessage = 'There is no user corresponding to the given email.';
-            break;
-          case 'wrong-password':
-            errorMessage = 'The password is invalid for the given email.';
-            break;
-          default:
-            errorMessage = 'Invalid credentials, please try again.';
-        }
+        errorMessage = e.code;
       }
       setState(() {
         errorText = errorMessage;
@@ -94,92 +78,76 @@ class _LoginState extends State<Login> {
     }
   }
 
-Future<void> onGoogleSignInHandler() async {
-  setLoading(true);
-  try {
-    FirebaseAuth auth = FirebaseAuth.instance;
-    final GoogleSignIn googleSignIn = GoogleSignIn();
+  Future<void> onGoogleSignInHandler() async {
+    setLoading(true);
+    try {
+      FirebaseAuth auth = FirebaseAuth.instance;
+      final GoogleSignIn googleSignIn = GoogleSignIn();
 
-    // Triggering the authentication flow
-    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-    if (googleUser == null) {
-      // User canceled the sign-in
-      showCustomSnackbar(context, 'Google sign-in was canceled.');
-      return;
-    }
-
-    // Obtain the auth details from the request
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-    // Create a new credential
-    final AuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    // Sign in the user with the credential
-    final UserCredential userCredential = await auth.signInWithCredential(credential);
-
-    // Access the user information
-    final User? user = userCredential.user;
-    if (user != null) {
-      // Store user information in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'name': user.displayName,
-        'email': user.email,
-        'phone': '1234567890', // Consider obtaining phone number dynamically if needed
-        'imageUrl': user.photoURL,
-      });
-
-      // Store user data in SharedPreferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', user.uid);
-      await prefs.setString('userEmail', user.email ?? "");
-
-      showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(user: user),
-        ),
-      );
-    } else {
-      // In case user is null after sign-in (should be very rare)
-      showCustomSnackbar(context, 'Google sign-in failed. No user information available.');
-    }
-  } catch (e) {
-    String errorMessage;
-    if (e is FirebaseAuthException) {
-      print(e.code);
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          errorMessage = 'The account already exists with a different credential.';
-          break;
-        case 'invalid-credential':
-          errorMessage = 'The credential is invalid or expired.';
-          break;
-        case 'operation-not-allowed':
-          errorMessage = 'Operation not allowed. Please enable Google sign-in in the Firebase console.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'This user has been disabled.';
-          break;
-        case 'user-not-found':
-          errorMessage = 'No user found for this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Wrong password provided.';
-          break;
-        default:
-          errorMessage = 'Google sign-in failed, please try again!';
+      // Triggering the authentication flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User canceled the sign-in
+        showCustomSnackbar(context, 'Google sign-in was canceled.');
+        return;
       }
-       showCustomSnackbar(context, errorMessage);
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      // Sign in the user with the credential
+      final UserCredential userCredential =
+          await auth.signInWithCredential(credential);
+
+      // Access the user information
+      final User? user = userCredential.user;
+      if (user != null) {
+        // Store user information in Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'name': user.displayName,
+          'email': user.email,
+          'phone':
+              '1234567890', // Consider obtaining phone number dynamically if needed
+          'imageUrl': user.photoURL,
+        });
+
+        // Store user data in SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', user.uid);
+        await prefs.setString('userEmail', user.email ?? "");
+
+        showCustomSnackbar(context, 'Welcome back, ${user.displayName}!');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(user: user),
+          ),
+        );
+      } else {
+        // In case user is null after sign-in (should be very rare)
+        showCustomSnackbar(
+            context, 'Google sign-in failed. No user information available.');
+      }
+    } catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      if (e is FirebaseAuthException) {
+        errorMessage = e.code;
+      }
+      setState(() {
+        errorText = errorMessage;
+      });
+      showCustomSnackbar(context, 'An error occurred: $errorMessage');
+    } finally {
+      setLoading(false);
     }
-   
-  } finally {
-    setLoading(false);
   }
-}
 
   Future<void> onGitHubSignInHandler() async {
     try {
@@ -263,36 +231,14 @@ Future<void> onGoogleSignInHandler() async {
           break;
       }
     } catch (e) {
-      String errorMessage;
+      String errorMessage = 'An error occurred. Please try again.';
       if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'account-exists-with-different-credential':
-            errorMessage =
-                'The account already exists with a different credential.';
-            break;
-          case 'invalid-credential':
-            errorMessage = 'The credential is invalid or expired.';
-            break;
-          case 'operation-not-allowed':
-            errorMessage =
-                'Operation not allowed. Please enable GitHub sign-in in the Firebase console.';
-            break;
-          case 'user-disabled':
-            errorMessage = 'This user has been disabled.';
-            break;
-          case 'user-not-found':
-            errorMessage = 'No user found for this email.';
-            break;
-          case 'wrong-password':
-            errorMessage = 'Wrong password provided.';
-            break;
-          default:
-            errorMessage = 'An undefined error occurred.';
-        }
-      } else {
-        errorMessage = 'An unknown error occurred.';
+        errorMessage = e.code;
       }
-      showCustomSnackbar(context, errorMessage);
+      setState(() {
+        errorText = errorMessage;
+      });
+      showCustomSnackbar(context, 'An error occurred: $errorMessage');
     } finally {
       setLoading(false);
     }
